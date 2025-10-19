@@ -1,0 +1,793 @@
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+
+export interface Project {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export interface Note {
+  id: string;
+  projectId: string;
+  title: string;
+  content: string;
+  isFavorite: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Prompt {
+  id: string;
+  projectId: string;
+  title: string;
+  content: string;
+  notes: string;
+  tags: string[];
+  isFavorite: boolean;
+  createdAt: string;
+}
+
+export interface Snippet {
+  id: string;
+  projectId: string;
+  title: string;
+  code: string;
+  language: string;
+  tags: string[];
+  isFavorite: boolean;
+  createdAt: string;
+}
+
+export interface CheatsheetItem {
+  id: string;
+  projectId: string;
+  title: string;
+  content: string;
+  category: string;
+  isFavorite: boolean;
+}
+
+export interface KanbanTask {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string;
+  column: 'todo' | 'inProgress' | 'done';
+  recurrence?: 'daily' | 'weekly' | 'none';
+  completedAt?: string;
+  createdAt: string;
+}
+
+export interface Password {
+  id: string;
+  projectId: string;
+  title: string;
+  username: string;
+  password: string;
+  url: string;
+  notes: string;
+}
+
+export interface Contact {
+  id: string;
+  projectId: string;
+  nomeCompleto: string;
+  telefones: string[];
+  emails: string[];
+  empresa: string;
+  cargo: string;
+  tags: string[];
+  notas: string;
+  createdAt: string;
+}
+
+export interface Bookmark {
+  id: string;
+  projectId: string;
+  title: string;
+  url: string;
+  description: string;
+  favicon?: string;
+  category: string;
+  createdAt: string;
+}
+
+export interface DiaryEntry {
+  id: string;
+  date: string;
+  content: string;
+}
+
+export interface FinancialAccount {
+  id: string;
+  projectId: string;
+  name: string;
+  initialBalance: number;
+  createdAt: string;
+}
+
+export interface FinancialCategory {
+  id: string;
+  projectId: string;
+  name: string;
+  type: 'income' | 'expense';
+  createdAt: string;
+}
+
+export interface FinancialBudget {
+  id: string;
+  projectId: string;
+  categoryId: string;
+  limit: number;
+  month: string;
+}
+
+export interface FinancialTransaction {
+  id: string;
+  projectId: string;
+  date: string;
+  description: string;
+  amount: number;
+  type: 'income' | 'expense';
+  categoryId: string;
+  accountId: string;
+  recurrence: 'never' | 'monthly' | 'yearly';
+  lastRecurrence?: string;
+  createdAt: string;
+}
+
+export interface PomodoroStats {
+  focusSessions: number;
+  totalMinutes: number;
+}
+
+export interface AppState {
+  projects: Project[];
+  notes: Note[];
+  prompts: Prompt[];
+  snippets: Snippet[];
+  cheatsheet: CheatsheetItem[];
+  kanban: KanbanTask[];
+  passwords: Password[];
+  bookmarks: Bookmark[];
+  diary: DiaryEntry[];
+  draft: string;
+  pomodoroStats: PomodoroStats;
+  noteTemplates: string[];
+  taskTemplates: Omit<KanbanTask, 'id' | 'projectId' | 'createdAt'>[];
+  encryptedPasswords?: string;
+  financialAccounts: FinancialAccount[];
+  financialCategories: FinancialCategory[];
+  financialBudgets: FinancialBudget[];
+  financialTransactions: FinancialTransaction[];
+  encryptedFinancial?: string;
+  contacts: Contact[];
+  contactTags: string[];
+  encryptedContacts?: string;
+  musicPlayerVolume: number;
+  musicPlayerShuffle: boolean;
+  musicPlayerRepeat: boolean;
+}
+
+interface AppContextType {
+  state: AppState;
+  currentProject: string;
+  setCurrentProject: (id: string) => void;
+  currentTab: string;
+  setCurrentTab: (tab: string) => void;
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
+  addProject: (project: Omit<Project, 'id'>) => void;
+  updateProject: (id: string, updates: Partial<Project>) => void;
+  deleteProject: (id: string) => void;
+  addNote: (note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateNote: (id: string, updates: Partial<Note>) => void;
+  deleteNote: (id: string) => void;
+  addPrompt: (prompt: Omit<Prompt, 'id' | 'createdAt'>) => void;
+  updatePrompt: (id: string, updates: Partial<Prompt>) => void;
+  deletePrompt: (id: string) => void;
+  addSnippet: (snippet: Omit<Snippet, 'id' | 'createdAt'>) => void;
+  updateSnippet: (id: string, updates: Partial<Snippet>) => void;
+  deleteSnippet: (id: string) => void;
+  addCheatsheetItem: (item: Omit<CheatsheetItem, 'id'>) => void;
+  updateCheatsheetItem: (id: string, updates: Partial<CheatsheetItem>) => void;
+  deleteCheatsheetItem: (id: string) => void;
+  addKanbanTask: (task: Omit<KanbanTask, 'id' | 'createdAt'>) => void;
+  updateKanbanTask: (id: string, updates: Partial<KanbanTask>) => void;
+  deleteKanbanTask: (id: string) => void;
+  addPassword: (password: Omit<Password, 'id'>) => void;
+  updatePassword: (id: string, updates: Partial<Password>) => void;
+  deletePassword: (id: string) => void;
+  addBookmark: (bookmark: Omit<Bookmark, 'id' | 'createdAt'>) => void;
+  updateBookmark: (id: string, updates: Partial<Bookmark>) => void;
+  deleteBookmark: (id: string) => void;
+  addDiaryEntry: (entry: Omit<DiaryEntry, 'id'>) => void;
+  updateDiaryEntry: (date: string, content: string) => void;
+  updateDraft: (content: string) => void;
+  updatePomodoroStats: (stats: Partial<PomodoroStats>) => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  addFinancialAccount: (account: Omit<FinancialAccount, 'id' | 'createdAt'>) => void;
+  updateFinancialAccount: (id: string, updates: Partial<FinancialAccount>) => void;
+  deleteFinancialAccount: (id: string) => void;
+  addFinancialCategory: (category: Omit<FinancialCategory, 'id' | 'createdAt'>) => void;
+  updateFinancialCategory: (id: string, updates: Partial<FinancialCategory>) => void;
+  deleteFinancialCategory: (id: string) => void;
+  addFinancialBudget: (budget: Omit<FinancialBudget, 'id'>) => void;
+  updateFinancialBudget: (id: string, updates: Partial<FinancialBudget>) => void;
+  deleteFinancialBudget: (id: string) => void;
+  addFinancialTransaction: (transaction: Omit<FinancialTransaction, 'id' | 'createdAt'>) => void;
+  updateFinancialTransaction: (id: string, updates: Partial<FinancialTransaction>) => void;
+  deleteFinancialTransaction: (id: string) => void;
+  setMusicPlayerVolume: (volume: number) => void;
+  setMusicPlayerShuffle: (shuffle: boolean) => void;
+  setMusicPlayerRepeat: (repeat: boolean) => void;
+  addContact: (contact: Omit<Contact, 'id' | 'createdAt'>) => void;
+  updateContact: (id: string, updates: Partial<Contact>) => void;
+  deleteContact: (id: string) => void;
+  addContactTag: (tag: string) => void;
+  deleteContactTag: (tag: string) => void;
+}
+
+const AppContext = createContext<AppContextType | undefined>(undefined);
+
+const initialState: AppState = {
+  projects: [{ id: 'default', name: 'Projeto Padrão', color: '#dc3545' }],
+  notes: [],
+  prompts: [],
+  snippets: [],
+  cheatsheet: [],
+  kanban: [],
+  passwords: [],
+  bookmarks: [],
+  diary: [],
+  draft: '',
+  pomodoroStats: { focusSessions: 0, totalMinutes: 0 },
+  noteTemplates: [],
+  taskTemplates: [],
+  financialAccounts: [],
+  financialCategories: [],
+  financialBudgets: [],
+  financialTransactions: [],
+  contacts: [],
+  contactTags: [],
+  musicPlayerVolume: 0.7,
+  musicPlayerShuffle: false,
+  musicPlayerRepeat: false,
+};
+
+export const AppProvider = ({ children }: { children: ReactNode }) => {
+  const [state, setState] = useState<AppState>(initialState);
+  const [currentProject, setCurrentProject] = useState('default');
+  const [currentTab, setCurrentTab] = useState('dashboard');
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Load state from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('devCommandCenter');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Merge with initialState to ensure all fields exist (handles migration)
+        setState({
+          ...initialState,
+          ...parsed,
+          // Ensure arrays exist even if missing from saved data
+          bookmarks: parsed.bookmarks || [],
+          financialAccounts: parsed.financialAccounts || [],
+          financialCategories: parsed.financialCategories || [],
+          financialBudgets: parsed.financialBudgets || [],
+          financialTransactions: parsed.financialTransactions || [],
+          contacts: parsed.contacts || [],
+          contactTags: parsed.contactTags || [],
+          musicPlayerVolume: parsed.musicPlayerVolume ?? 0.7,
+          musicPlayerShuffle: parsed.musicPlayerShuffle ?? false,
+          musicPlayerRepeat: parsed.musicPlayerRepeat ?? false,
+        });
+      } catch (e) {
+        console.error('Error loading state:', e);
+      }
+    }
+
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark';
+    if (savedTheme) {
+      setTheme(savedTheme);
+      document.documentElement.classList.toggle('dark', savedTheme === 'dark');
+    }
+
+    const savedProject = localStorage.getItem('currentProject');
+    if (savedProject) setCurrentProject(savedProject);
+  }, []);
+
+  // Save state to localStorage
+  useEffect(() => {
+    localStorage.setItem('devCommandCenter', JSON.stringify(state));
+  }, [state]);
+
+  // Check for recurring tasks
+  useEffect(() => {
+    const checkRecurringTasks = () => {
+      const today = new Date().toDateString();
+      const lastCheck = localStorage.getItem('lastRecurringCheck');
+      
+      if (lastCheck === today) return;
+
+      const updatedTasks = [...state.kanban];
+      let hasChanges = false;
+
+      state.kanban.forEach(task => {
+        if (task.column === 'done' && task.recurrence && task.recurrence !== 'none' && task.completedAt) {
+          const completedDate = new Date(task.completedAt);
+          const now = new Date();
+          
+          let shouldRecreate = false;
+          if (task.recurrence === 'daily') {
+            shouldRecreate = now.getDate() !== completedDate.getDate();
+          } else if (task.recurrence === 'weekly') {
+            const daysDiff = Math.floor((now.getTime() - completedDate.getTime()) / (1000 * 60 * 60 * 24));
+            shouldRecreate = daysDiff >= 7;
+          }
+
+          if (shouldRecreate) {
+            updatedTasks.push({
+              ...task,
+              id: `${task.id}-${Date.now()}`,
+              column: 'todo',
+              completedAt: undefined,
+              createdAt: new Date().toISOString(),
+            });
+            hasChanges = true;
+          }
+        }
+      });
+
+      if (hasChanges) {
+        setState(prev => ({ ...prev, kanban: updatedTasks }));
+      }
+      
+      localStorage.setItem('lastRecurringCheck', today);
+    };
+
+    checkRecurringTasks();
+  }, []);
+
+  // Check for recurring financial transactions
+  useEffect(() => {
+    const checkRecurringTransactions = () => {
+      const today = new Date().toDateString();
+      const lastFinancialCheck = localStorage.getItem('lastFinancialRecurringCheck');
+      
+      if (lastFinancialCheck === today) return;
+
+      const updatedTransactions = [...(state.financialTransactions || [])];
+      let hasChanges = false;
+
+      (state.financialTransactions || []).forEach(transaction => {
+        if (transaction.recurrence !== 'never' && transaction.lastRecurrence) {
+          const lastDate = new Date(transaction.lastRecurrence);
+          const now = new Date();
+          
+          let shouldRecreate = false;
+          if (transaction.recurrence === 'monthly') {
+            // Check if a month has passed
+            const monthsDiff = (now.getFullYear() - lastDate.getFullYear()) * 12 + 
+                             (now.getMonth() - lastDate.getMonth());
+            shouldRecreate = monthsDiff >= 1;
+          } else if (transaction.recurrence === 'yearly') {
+            // Check if a year has passed
+            const yearsDiff = now.getFullYear() - lastDate.getFullYear();
+            shouldRecreate = yearsDiff >= 1;
+          }
+
+          if (shouldRecreate) {
+            updatedTransactions.push({
+              ...transaction,
+              id: `${transaction.id}-${Date.now()}`,
+              date: new Date().toISOString().split('T')[0],
+              lastRecurrence: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+            });
+            hasChanges = true;
+          }
+        }
+      });
+
+      if (hasChanges) {
+        setState(prev => ({ ...prev, financialTransactions: updatedTransactions }));
+      }
+      
+      localStorage.setItem('lastFinancialRecurringCheck', today);
+    };
+
+    checkRecurringTransactions();
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    document.documentElement.classList.toggle('dark');
+    localStorage.setItem('theme', newTheme);
+  };
+
+  // CRUD operations
+  const addProject = (project: Omit<Project, 'id'>) => {
+    const newProject = { ...project, id: Date.now().toString() };
+    setState(prev => ({ ...prev, projects: [...prev.projects, newProject] }));
+  };
+
+  const updateProject = (id: string, updates: Partial<Project>) => {
+    setState(prev => ({
+      ...prev,
+      projects: prev.projects.map(p => p.id === id ? { ...p, ...updates } : p),
+    }));
+  };
+
+  const deleteProject = (id: string) => {
+    setState(prev => ({
+      ...prev,
+      projects: prev.projects.filter(p => p.id !== id),
+    }));
+  };
+
+  const addNote = (note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const newNote: Note = {
+      ...note,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setState(prev => ({ ...prev, notes: [...prev.notes, newNote] }));
+  };
+
+  const updateNote = (id: string, updates: Partial<Note>) => {
+    setState(prev => ({
+      ...prev,
+      notes: prev.notes.map(n => 
+        n.id === id ? { ...n, ...updates, updatedAt: new Date().toISOString() } : n
+      ),
+    }));
+  };
+
+  const deleteNote = (id: string) => {
+    setState(prev => ({ ...prev, notes: prev.notes.filter(n => n.id !== id) }));
+  };
+
+  const addPrompt = (prompt: Omit<Prompt, 'id' | 'createdAt'>) => {
+    const newPrompt: Prompt = {
+      ...prompt,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+    };
+    setState(prev => ({ ...prev, prompts: [...prev.prompts, newPrompt] }));
+  };
+
+  const updatePrompt = (id: string, updates: Partial<Prompt>) => {
+    setState(prev => ({
+      ...prev,
+      prompts: prev.prompts.map(p => p.id === id ? { ...p, ...updates } : p),
+    }));
+  };
+
+  const deletePrompt = (id: string) => {
+    setState(prev => ({ ...prev, prompts: prev.prompts.filter(p => p.id !== id) }));
+  };
+
+  const addSnippet = (snippet: Omit<Snippet, 'id' | 'createdAt'>) => {
+    const newSnippet: Snippet = {
+      ...snippet,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+    };
+    setState(prev => ({ ...prev, snippets: [...prev.snippets, newSnippet] }));
+  };
+
+  const updateSnippet = (id: string, updates: Partial<Snippet>) => {
+    setState(prev => ({
+      ...prev,
+      snippets: prev.snippets.map(s => s.id === id ? { ...s, ...updates } : s),
+    }));
+  };
+
+  const deleteSnippet = (id: string) => {
+    setState(prev => ({ ...prev, snippets: prev.snippets.filter(s => s.id !== id) }));
+  };
+
+  const addCheatsheetItem = (item: Omit<CheatsheetItem, 'id'>) => {
+    const newItem: CheatsheetItem = { ...item, id: Date.now().toString() };
+    setState(prev => ({ ...prev, cheatsheet: [...prev.cheatsheet, newItem] }));
+  };
+
+  const updateCheatsheetItem = (id: string, updates: Partial<CheatsheetItem>) => {
+    setState(prev => ({
+      ...prev,
+      cheatsheet: prev.cheatsheet.map(item => item.id === id ? { ...item, ...updates } : item),
+    }));
+  };
+
+  const deleteCheatsheetItem = (id: string) => {
+    setState(prev => ({ ...prev, cheatsheet: prev.cheatsheet.filter(item => item.id !== id) }));
+  };
+
+  const addKanbanTask = (task: Omit<KanbanTask, 'id' | 'createdAt'>) => {
+    const newTask: KanbanTask = {
+      ...task,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+    };
+    setState(prev => ({ ...prev, kanban: [...prev.kanban, newTask] }));
+  };
+
+  const updateKanbanTask = (id: string, updates: Partial<KanbanTask>) => {
+    setState(prev => ({
+      ...prev,
+      kanban: prev.kanban.map(task => task.id === id ? { ...task, ...updates } : task),
+    }));
+  };
+
+  const deleteKanbanTask = (id: string) => {
+    setState(prev => ({ ...prev, kanban: prev.kanban.filter(task => task.id !== id) }));
+  };
+
+  const addPassword = (password: Omit<Password, 'id'>) => {
+    const newPassword: Password = { ...password, id: Date.now().toString() };
+    setState(prev => ({ ...prev, passwords: [...prev.passwords, newPassword] }));
+  };
+
+  const updatePassword = (id: string, updates: Partial<Password>) => {
+    setState(prev => ({
+      ...prev,
+      passwords: prev.passwords.map(p => p.id === id ? { ...p, ...updates } : p),
+    }));
+  };
+
+  const deletePassword = (id: string) => {
+    setState(prev => ({ ...prev, passwords: prev.passwords.filter(p => p.id !== id) }));
+  };
+
+  const addBookmark = (bookmark: Omit<Bookmark, 'id' | 'createdAt'>) => {
+    const newBookmark: Bookmark = {
+      ...bookmark,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+    };
+    setState(prev => ({ ...prev, bookmarks: [...prev.bookmarks, newBookmark] }));
+  };
+
+  const updateBookmark = (id: string, updates: Partial<Bookmark>) => {
+    setState(prev => ({
+      ...prev,
+      bookmarks: prev.bookmarks.map(b => b.id === id ? { ...b, ...updates } : b),
+    }));
+  };
+
+  const deleteBookmark = (id: string) => {
+    setState(prev => ({ ...prev, bookmarks: prev.bookmarks.filter(b => b.id !== id) }));
+  };
+
+  const addDiaryEntry = (entry: Omit<DiaryEntry, 'id'>) => {
+    const newEntry: DiaryEntry = { ...entry, id: Date.now().toString() };
+    setState(prev => ({ ...prev, diary: [...prev.diary, newEntry] }));
+  };
+
+  const updateDiaryEntry = (date: string, content: string) => {
+    setState(prev => {
+      const existing = prev.diary.find(e => e.date === date);
+      if (existing) {
+        return {
+          ...prev,
+          diary: prev.diary.map(e => e.date === date ? { ...e, content } : e),
+        };
+      }
+      return {
+        ...prev,
+        diary: [...prev.diary, { id: Date.now().toString(), date, content }],
+      };
+    });
+  };
+
+  const updateDraft = (content: string) => {
+    setState(prev => ({ ...prev, draft: content }));
+  };
+
+  const updatePomodoroStats = (stats: Partial<PomodoroStats>) => {
+    setState(prev => ({
+      ...prev,
+      pomodoroStats: { ...prev.pomodoroStats, ...stats },
+    }));
+  };
+
+  const addFinancialAccount = (account: Omit<FinancialAccount, 'id' | 'createdAt'>) => {
+    const newAccount: FinancialAccount = {
+      ...account,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+    };
+    setState(prev => ({ ...prev, financialAccounts: [...prev.financialAccounts, newAccount] }));
+  };
+
+  const updateFinancialAccount = (id: string, updates: Partial<FinancialAccount>) => {
+    setState(prev => ({
+      ...prev,
+      financialAccounts: prev.financialAccounts.map(a => a.id === id ? { ...a, ...updates } : a),
+    }));
+  };
+
+  const deleteFinancialAccount = (id: string) => {
+    setState(prev => ({ ...prev, financialAccounts: prev.financialAccounts.filter(a => a.id !== id) }));
+  };
+
+  const addFinancialCategory = (category: Omit<FinancialCategory, 'id' | 'createdAt'>) => {
+    const newCategory: FinancialCategory = {
+      ...category,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+    };
+    setState(prev => ({ ...prev, financialCategories: [...prev.financialCategories, newCategory] }));
+  };
+
+  const updateFinancialCategory = (id: string, updates: Partial<FinancialCategory>) => {
+    setState(prev => ({
+      ...prev,
+      financialCategories: prev.financialCategories.map(c => c.id === id ? { ...c, ...updates } : c),
+    }));
+  };
+
+  const deleteFinancialCategory = (id: string) => {
+    setState(prev => ({ ...prev, financialCategories: prev.financialCategories.filter(c => c.id !== id) }));
+  };
+
+  const addFinancialBudget = (budget: Omit<FinancialBudget, 'id'>) => {
+    const newBudget: FinancialBudget = { ...budget, id: Date.now().toString() };
+    setState(prev => ({ ...prev, financialBudgets: [...prev.financialBudgets, newBudget] }));
+  };
+
+  const updateFinancialBudget = (id: string, updates: Partial<FinancialBudget>) => {
+    setState(prev => ({
+      ...prev,
+      financialBudgets: prev.financialBudgets.map(b => b.id === id ? { ...b, ...updates } : b),
+    }));
+  };
+
+  const deleteFinancialBudget = (id: string) => {
+    setState(prev => ({ ...prev, financialBudgets: prev.financialBudgets.filter(b => b.id !== id) }));
+  };
+
+  const addFinancialTransaction = (transaction: Omit<FinancialTransaction, 'id' | 'createdAt'>) => {
+    const newTransaction: FinancialTransaction = {
+      ...transaction,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+    };
+    setState(prev => ({ ...prev, financialTransactions: [...prev.financialTransactions, newTransaction] }));
+  };
+
+  const updateFinancialTransaction = (id: string, updates: Partial<FinancialTransaction>) => {
+    setState(prev => ({
+      ...prev,
+      financialTransactions: prev.financialTransactions.map(t => t.id === id ? { ...t, ...updates } : t),
+    }));
+  };
+
+  const deleteFinancialTransaction = (id: string) => {
+    setState(prev => ({ ...prev, financialTransactions: prev.financialTransactions.filter(t => t.id !== id) }));
+  };
+
+  const setMusicPlayerVolume = (volume: number) => {
+    setState(prev => ({ ...prev, musicPlayerVolume: volume }));
+  };
+
+  const setMusicPlayerShuffle = (shuffle: boolean) => {
+    setState(prev => ({ ...prev, musicPlayerShuffle: shuffle }));
+  };
+
+  const setMusicPlayerRepeat = (repeat: boolean) => {
+    setState(prev => ({ ...prev, musicPlayerRepeat: repeat }));
+  };
+
+  const addContact = (contact: Omit<Contact, 'id' | 'createdAt'>) => {
+    const newContact: Contact = {
+      ...contact,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+    };
+    setState(prev => ({ ...prev, contacts: [...prev.contacts, newContact] }));
+  };
+
+  const updateContact = (id: string, updates: Partial<Contact>) => {
+    setState(prev => ({
+      ...prev,
+      contacts: prev.contacts.map(c => c.id === id ? { ...c, ...updates } : c),
+    }));
+  };
+
+  const deleteContact = (id: string) => {
+    setState(prev => ({ ...prev, contacts: prev.contacts.filter(c => c.id !== id) }));
+  };
+
+  const addContactTag = (tag: string) => {
+    setState(prev => ({
+      ...prev,
+      contactTags: [...prev.contactTags, tag],
+    }));
+  };
+
+  const deleteContactTag = (tag: string) => {
+    setState(prev => ({
+      ...prev,
+      contactTags: prev.contactTags.filter(t => t !== tag),
+    }));
+  };
+
+  return (
+    <AppContext.Provider
+      value={{
+        state,
+        currentProject,
+        setCurrentProject,
+        currentTab,
+        setCurrentTab,
+        theme,
+        toggleTheme,
+        addProject,
+        updateProject,
+        deleteProject,
+        addNote,
+        updateNote,
+        deleteNote,
+        addPrompt,
+        updatePrompt,
+        deletePrompt,
+        addSnippet,
+        updateSnippet,
+        deleteSnippet,
+        addCheatsheetItem,
+        updateCheatsheetItem,
+        deleteCheatsheetItem,
+        addKanbanTask,
+        updateKanbanTask,
+        deleteKanbanTask,
+        addPassword,
+        updatePassword,
+        deletePassword,
+        addBookmark,
+        updateBookmark,
+        deleteBookmark,
+        addDiaryEntry,
+        updateDiaryEntry,
+        updateDraft,
+        updatePomodoroStats,
+        searchQuery,
+        setSearchQuery,
+        addFinancialAccount,
+        updateFinancialAccount,
+        deleteFinancialAccount,
+        addFinancialCategory,
+        updateFinancialCategory,
+        deleteFinancialCategory,
+        addFinancialBudget,
+        updateFinancialBudget,
+        deleteFinancialBudget,
+        addFinancialTransaction,
+        updateFinancialTransaction,
+        deleteFinancialTransaction,
+        setMusicPlayerVolume,
+        setMusicPlayerShuffle,
+        setMusicPlayerRepeat,
+        addContact,
+        updateContact,
+        deleteContact,
+        addContactTag,
+        deleteContactTag,
+      }}
+    >
+      {children}
+    </AppContext.Provider>
+  );
+};
+
+export const useApp = () => {
+  const context = useContext(AppContext);
+  if (!context) throw new Error('useApp must be used within AppProvider');
+  return context;
+};
