@@ -7,9 +7,15 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Play, Pause, SkipBack, SkipForward, Volume2, Shuffle, Repeat, Music, FolderOpen } from 'lucide-react';
 import { toast } from 'sonner';
 
+interface MusicFile {
+  file: File;
+  name: string;
+  url: string;
+}
+
 export const MusicPlayerBar = () => {
   const { state, setMusicPlayerVolume, setMusicPlayerShuffle, setMusicPlayerRepeat } = useApp();
-  const [playlist, setPlaylist] = useState<File[]>([]);
+  const [playlist, setPlaylist] = useState<MusicFile[]>([]);
   const [currentTrack, setCurrentTrack] = useState<number>(-1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -17,14 +23,16 @@ export const MusicPlayerBar = () => {
   const [playlistDialogOpen, setPlaylistDialogOpen] = useState(false);
   
   const audioRef = useRef<HTMLAudioElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Atualizar volume quando muda no estado
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = state.musicPlayerVolume;
     }
   }, [state.musicPlayerVolume]);
 
-  const handleFolderSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFolderSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const audioFiles = files.filter(file => 
       /\.(mp3|m4a|ogg|wav|flac)$/i.test(file.name)
@@ -34,21 +42,39 @@ export const MusicPlayerBar = () => {
       toast.error('Nenhum arquivo de áudio encontrado');
       return;
     }
+
+    const musicFiles: MusicFile[] = audioFiles.map(file => ({
+      file,
+      name: file.name.replace(/\.[^/.]+$/, ''),
+      url: URL.createObjectURL(file)
+    }));
     
-    setPlaylist(audioFiles);
+    setPlaylist(musicFiles);
     setCurrentTrack(0);
+    
+    // Carregar primeira música
+    if (audioRef.current && musicFiles.length > 0) {
+      audioRef.current.src = musicFiles[0].url;
+      audioRef.current.volume = state.musicPlayerVolume;
+    }
+    
     toast.success(`${audioFiles.length} músicas carregadas`);
   };
 
   const playTrack = (index: number) => {
     if (!audioRef.current || index < 0 || index >= playlist.length) return;
     
-    const file = playlist[index];
-    const url = URL.createObjectURL(file);
-    audioRef.current.src = url;
-    audioRef.current.play();
-    setCurrentTrack(index);
-    setIsPlaying(true);
+    const musicFile = playlist[index];
+    audioRef.current.src = musicFile.url;
+    audioRef.current.play()
+      .then(() => {
+        setCurrentTrack(index);
+        setIsPlaying(true);
+      })
+      .catch(error => {
+        console.error('Erro ao tocar música:', error);
+        toast.error('Erro ao tocar música');
+      });
   };
 
   const handlePlayPause = () => {
@@ -60,8 +86,12 @@ export const MusicPlayerBar = () => {
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      audioRef.current.play();
-      setIsPlaying(true);
+      audioRef.current.play()
+        .then(() => setIsPlaying(true))
+        .catch(error => {
+          console.error('Erro ao tocar:', error);
+          toast.error('Erro ao reproduzir');
+        });
     }
   };
 
@@ -119,7 +149,7 @@ export const MusicPlayerBar = () => {
   };
 
   const currentTrackName = currentTrack >= 0 && playlist[currentTrack] 
-    ? playlist[currentTrack].name.replace(/\.[^/.]+$/, '') 
+    ? playlist[currentTrack].name
     : 'Nenhuma música selecionada';
 
   if (playlist.length === 0) {
@@ -131,27 +161,20 @@ export const MusicPlayerBar = () => {
             <span className="text-sm text-muted-foreground">Player de Música</span>
           </div>
           <input
+            ref={fileInputRef}
             type="file"
-            id="music-folder-input"
-            ref={(input) => {
-              if (input) {
-                input.setAttribute('webkitdirectory', '');
-                input.setAttribute('directory', '');
-              }
-            }}
+            // @ts-ignore - webkitdirectory é suportado mas não está nos tipos
+            webkitdirectory=""
+            directory=""
             multiple
             onChange={handleFolderSelect}
             className="hidden"
             accept="audio/*"
           />
-          <label htmlFor="music-folder-input" className="cursor-pointer">
-            <Button size="sm" type="button" asChild>
-              <span>
-                <FolderOpen className="w-4 h-4 mr-2" />
-                Selecionar Pasta
-              </span>
-            </Button>
-          </label>
+          <Button size="sm" onClick={() => fileInputRef.current?.click()}>
+            <FolderOpen className="w-4 h-4 mr-2" />
+            Selecionar Pasta
+          </Button>
         </div>
       </div>
     );
@@ -251,8 +274,8 @@ export const MusicPlayerBar = () => {
                           }`}
                         >
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground w-6">{index + 1}</span>
-                            <span className="flex-1 truncate">{file.name.replace(/\.[^/.]+$/, '')}</span>
+                           <span className="text-sm text-muted-foreground w-6">{index + 1}</span>
+                            <span className="flex-1 truncate">{file.name}</span>
                             {currentTrack === index && isPlaying && (
                               <Play className="h-4 w-4 text-primary" />
                             )}
