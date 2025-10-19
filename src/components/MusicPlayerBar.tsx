@@ -130,18 +130,26 @@ export const MusicPlayerBar = () => {
             <Music className="h-5 w-5 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">Player de Música</span>
           </div>
-          <label className="cursor-pointer">
-            <input
-              type="file"
-              {...({ webkitdirectory: '', directory: '' } as any)}
-              multiple
-              onChange={handleFolderSelect}
-              className="hidden"
-              accept="audio/*"
-            />
-            <Button size="sm">
-              <FolderOpen className="w-4 h-4 mr-2" />
-              Selecionar Pasta
+          <input
+            type="file"
+            id="music-folder-input"
+            ref={(input) => {
+              if (input) {
+                input.setAttribute('webkitdirectory', '');
+                input.setAttribute('directory', '');
+              }
+            }}
+            multiple
+            onChange={handleFolderSelect}
+            className="hidden"
+            accept="audio/*"
+          />
+          <label htmlFor="music-folder-input" className="cursor-pointer">
+            <Button size="sm" type="button" asChild>
+              <span>
+                <FolderOpen className="w-4 h-4 mr-2" />
+                Selecionar Pasta
+              </span>
             </Button>
           </label>
         </div>
