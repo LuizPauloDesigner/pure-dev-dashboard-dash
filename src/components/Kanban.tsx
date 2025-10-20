@@ -7,7 +7,7 @@ import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Plus, Trash2, GripVertical } from 'lucide-react';
-import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSensor, useDroppable, DragOverEvent } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { toast } from 'sonner';
@@ -18,6 +18,36 @@ const columns = [
   { id: 'inProgress', title: 'Em Andamento', color: 'bg-yellow-500' },
   { id: 'done', title: 'Concluído', color: 'bg-green-500' },
 ] as const;
+
+function DroppableColumn({ 
+  column, 
+  tasks, 
+  children 
+}: { 
+  column: typeof columns[number]; 
+  tasks: KanbanTask[]; 
+  children: React.ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: column.id,
+  });
+
+  return (
+    <div key={column.id} className="flex flex-col">
+      <div className={`${column.color} text-white rounded-t-lg p-3 font-semibold`}>
+        {column.title} ({tasks.length})
+      </div>
+      <div 
+        ref={setNodeRef}
+        className={`flex-1 border border-t-0 rounded-b-lg p-4 space-y-3 min-h-[400px] bg-card/50 transition-colors ${
+          isOver ? 'bg-primary/5 border-primary' : ''
+        }`}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
 
 function SortableTask({ task, onDelete }: { task: KanbanTask; onDelete: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -87,14 +117,20 @@ export const Kanban = () => {
     if (!over) return;
 
     const taskId = active.id as string;
-    const newColumn = over.id as KanbanTask['column'];
-
     const task = projectTasks.find(t => t.id === taskId);
-    if (task && task.column !== newColumn) {
-      updateKanbanTask(taskId, {
-        column: newColumn,
-        completedAt: newColumn === 'done' ? new Date().toISOString() : undefined,
-      });
+    if (!task) return;
+
+    // Check if dropped over a column
+    const columnIds = columns.map(c => c.id);
+    if (columnIds.includes(over.id as any)) {
+      const newColumn = over.id as KanbanTask['column'];
+      if (task.column !== newColumn) {
+        updateKanbanTask(taskId, {
+          column: newColumn,
+          completedAt: newColumn === 'done' ? new Date().toISOString() : undefined,
+        });
+        toast.success('Tarefa movida');
+      }
     }
   };
 
@@ -187,25 +223,20 @@ export const Kanban = () => {
             const columnTasks = projectTasks.filter(task => task.column === column.id);
 
             return (
-              <div key={column.id} className="flex flex-col">
-                <div className={`${column.color} text-white rounded-t-lg p-3 font-semibold`}>
-                  {column.title} ({columnTasks.length})
-                </div>
+              <DroppableColumn key={column.id} column={column} tasks={columnTasks}>
                 <SortableContext items={columnTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                  <div className="flex-1 border border-t-0 rounded-b-lg p-4 space-y-3 min-h-[400px] bg-card/50">
-                    {columnTasks.map(task => (
-                      <SortableTask
-                        key={task.id}
-                        task={task}
-                        onDelete={() => {
-                          deleteKanbanTask(task.id);
-                          toast.success('Tarefa deletada');
-                        }}
-                      />
-                    ))}
-                  </div>
+                  {columnTasks.map(task => (
+                    <SortableTask
+                      key={task.id}
+                      task={task}
+                      onDelete={() => {
+                        deleteKanbanTask(task.id);
+                        toast.success('Tarefa deletada');
+                      }}
+                    />
+                  ))}
                 </SortableContext>
-              </div>
+              </DroppableColumn>
             );
           })}
         </div>
