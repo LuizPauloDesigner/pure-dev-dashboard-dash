@@ -96,6 +96,10 @@ export interface DiaryEntry {
   id: string;
   date: string;
   content: string;
+  moodScore?: number | null; // 1-5 ou null
+  projetoId?: string;
+  origem?: string;
+  dataHoraRegistro?: string;
 }
 
 export interface FinancialAccount {
@@ -215,7 +219,7 @@ interface AppContextType {
   updateBookmark: (id: string, updates: Partial<Bookmark>) => void;
   deleteBookmark: (id: string) => void;
   addDiaryEntry: (entry: Omit<DiaryEntry, 'id'>) => void;
-  updateDiaryEntry: (date: string, content: string) => void;
+  updateDiaryEntry: (date: string, content: string, moodScore?: number | null, projetoId?: string) => void;
   updateDraft: (content: string) => void;
   updatePomodoroStats: (stats: Partial<PomodoroStats>) => void;
   addWellnessBreak: (breakRecord: Omit<WellnessBreakRecord, 'id'>) => void;
@@ -586,18 +590,39 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setState(prev => ({ ...prev, diary: [...prev.diary, newEntry] }));
   };
 
-  const updateDiaryEntry = (date: string, content: string) => {
+  const updateDiaryEntry = (date: string, content: string, moodScore?: number | null, projetoId?: string) => {
     setState(prev => {
       const existing = prev.diary.find(e => e.date === date);
+      const dataHoraRegistro = new Date().toISOString();
+      
       if (existing) {
         return {
           ...prev,
-          diary: prev.diary.map(e => e.date === date ? { ...e, content } : e),
+          diary: prev.diary.map(e => 
+            e.date === date 
+              ? { 
+                  ...e, 
+                  content, 
+                  moodScore, 
+                  projetoId, 
+                  origem: 'Diario',
+                  dataHoraRegistro 
+                } 
+              : e
+          ),
         };
       }
       return {
         ...prev,
-        diary: [...prev.diary, { id: Date.now().toString(), date, content }],
+        diary: [...prev.diary, { 
+          id: Date.now().toString(), 
+          date, 
+          content,
+          moodScore,
+          projetoId,
+          origem: 'Diario',
+          dataHoraRegistro
+        }],
       };
     });
   };
