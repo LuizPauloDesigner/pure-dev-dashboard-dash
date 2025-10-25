@@ -141,6 +141,18 @@ export interface PomodoroStats {
   totalMinutes: number;
 }
 
+export interface WellnessBreakRecord {
+  id: string;
+  dataHora: string;
+  tipoCiclo: 'short' | 'long';
+  adesaoStatus: 'Concluida' | 'Pulada';
+  duracaoPausa: number;
+}
+
+export interface WellnessStats {
+  breaks: WellnessBreakRecord[];
+}
+
 export interface AppState {
   projects: Project[];
   notes: Note[];
@@ -153,6 +165,7 @@ export interface AppState {
   diary: DiaryEntry[];
   draft: string;
   pomodoroStats: PomodoroStats;
+  wellnessStats: WellnessStats;
   noteTemplates: string[];
   taskTemplates: Omit<KanbanTask, 'id' | 'projectId' | 'createdAt'>[];
   encryptedPasswords?: string;
@@ -205,6 +218,7 @@ interface AppContextType {
   updateDiaryEntry: (date: string, content: string) => void;
   updateDraft: (content: string) => void;
   updatePomodoroStats: (stats: Partial<PomodoroStats>) => void;
+  addWellnessBreak: (breakRecord: Omit<WellnessBreakRecord, 'id'>) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   addFinancialAccount: (account: Omit<FinancialAccount, 'id' | 'createdAt'>) => void;
@@ -243,6 +257,7 @@ const initialState: AppState = {
   diary: [],
   draft: '',
   pomodoroStats: { focusSessions: 0, totalMinutes: 0 },
+  wellnessStats: { breaks: [] },
   noteTemplates: [],
   taskTemplates: [],
   financialAccounts: [],
@@ -284,6 +299,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           musicPlayerVolume: parsed.musicPlayerVolume ?? 0.7,
           musicPlayerShuffle: parsed.musicPlayerShuffle ?? false,
           musicPlayerRepeat: parsed.musicPlayerRepeat ?? false,
+          wellnessStats: parsed.wellnessStats || { breaks: [] },
         });
       } catch (e) {
         console.error('Error loading state:', e);
@@ -597,6 +613,20 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
+  const addWellnessBreak = (breakRecord: Omit<WellnessBreakRecord, 'id'>) => {
+    const newBreak: WellnessBreakRecord = {
+      ...breakRecord,
+      id: Date.now().toString(),
+    };
+    setState(prev => ({
+      ...prev,
+      wellnessStats: {
+        ...prev.wellnessStats,
+        breaks: [...prev.wellnessStats.breaks, newBreak],
+      },
+    }));
+  };
+
   const addFinancialAccount = (account: Omit<FinancialAccount, 'id' | 'createdAt'>) => {
     const newAccount: FinancialAccount = {
       ...account,
@@ -757,6 +787,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         updateDiaryEntry,
         updateDraft,
         updatePomodoroStats,
+        addWellnessBreak,
         searchQuery,
         setSearchQuery,
         addFinancialAccount,

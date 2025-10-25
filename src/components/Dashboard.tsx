@@ -1,6 +1,6 @@
 import { useApp } from '@/contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { CheckCircle2, FileText, Code, Timer } from 'lucide-react';
+import { CheckCircle2, FileText, Code, Timer, Heart } from 'lucide-react';
 
 export const Dashboard = () => {
   const { state, currentProject } = useApp();
@@ -18,6 +18,10 @@ export const Dashboard = () => {
     .filter(snippet => snippet.projectId === currentProject)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 3);
+
+  const totalBreaks = state.wellnessStats.breaks.length;
+  const completedBreaks = state.wellnessStats.breaks.filter(b => b.adesaoStatus === 'Concluida').length;
+  const adherenceRate = totalBreaks > 0 ? Math.round((completedBreaks / totalBreaks) * 100) : 0;
 
   return (
     <div className="space-y-6">
@@ -64,6 +68,35 @@ export const Dashboard = () => {
           <CardContent>
             <div className="text-2xl font-bold text-primary">{state.pomodoroStats.focusSessions}</div>
             <p className="text-xs text-muted-foreground">{state.pomodoroStats.totalMinutes} minutos</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Bem-Estar e Pausas Ativas</CardTitle>
+            <Heart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-baseline gap-2">
+                  <div className="text-3xl font-bold text-primary">{adherenceRate}%</div>
+                  <p className="text-sm text-muted-foreground">Taxa de Adesão</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+                <div>
+                  <p className="text-xs text-muted-foreground">Pausas Concluídas</p>
+                  <div className="text-xl font-bold text-green-600">{completedBreaks}</div>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Total de Pausas</p>
+                  <div className="text-xl font-bold">{totalBreaks}</div>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
