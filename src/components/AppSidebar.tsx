@@ -25,6 +25,7 @@ import {
   Calendar,
   FileEdit,
   Settings,
+  Heart,
   LucideIcon,
 } from 'lucide-react';
 
@@ -46,7 +47,7 @@ const menuItems: MenuItem[] = [
   { id: 'contacts', label: 'Contatos', icon: User },
   { id: 'finance', label: 'Financeiro', icon: DollarSign },
   { id: 'diary', label: 'Diário', icon: Calendar },
-  { id: 'wellness', label: 'Bem-Estar', icon: '🧘' },
+  { id: 'wellness', label: 'Bem-Estar', icon: Heart },
   { id: 'draft', label: 'Rascunho', icon: FileEdit },
   { id: 'settings', label: 'Config', icon: Settings },
 ];
