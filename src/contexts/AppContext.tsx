@@ -157,6 +157,30 @@ export interface WellnessStats {
   breaks: WellnessBreakRecord[];
 }
 
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  unlockedAt?: string;
+}
+
+export interface GamificationStats {
+  pontos: number;
+  nivel: number;
+  historico: Array<{
+    id: string;
+    tipo: string;
+    pontos: number;
+    descricao: string;
+    timestamp: string;
+  }>;
+  badges: Badge[];
+  focusDuration: number; // minutos
+  shortBreakDuration: number; // minutos
+  longBreakDuration: number; // minutos
+}
+
 export interface AppState {
   projects: Project[];
   notes: Note[];
@@ -170,6 +194,7 @@ export interface AppState {
   draft: string;
   pomodoroStats: PomodoroStats;
   wellnessStats: WellnessStats;
+  gamificationStats: GamificationStats;
   noteTemplates: string[];
   taskTemplates: Omit<KanbanTask, 'id' | 'projectId' | 'createdAt'>[];
   encryptedPasswords?: string;
@@ -223,6 +248,9 @@ interface AppContextType {
   updateDraft: (content: string) => void;
   updatePomodoroStats: (stats: Partial<PomodoroStats>) => void;
   addWellnessBreak: (breakRecord: Omit<WellnessBreakRecord, 'id'>) => void;
+  addGamificationPoints: (pontos: number, tipo: string, descricao: string) => void;
+  unlockBadge: (badgeId: string) => void;
+  updateFocusDurations: (focus: number, shortBreak: number, longBreak: number) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   addFinancialAccount: (account: Omit<FinancialAccount, 'id' | 'createdAt'>) => void;
@@ -249,6 +277,17 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+const AVAILABLE_BADGES: Badge[] = [
+  { id: 'foco10', name: 'Focado', description: 'Completou 10 ciclos de foco', icon: '🎯' },
+  { id: 'foco25', name: 'Concentrado', description: 'Completou 25 ciclos de foco', icon: '🧠' },
+  { id: 'foco50', name: 'Mestre do Foco', description: 'Completou 50 ciclos de foco', icon: '🏆' },
+  { id: 'pausa10', name: 'Cuidadoso', description: 'Completou 10 pausas ativas', icon: '💚' },
+  { id: 'pausa25', name: 'Bem-Estar', description: 'Completou 25 pausas ativas', icon: '🌟' },
+  { id: 'streak7', name: 'Consistente', description: '7 dias consecutivos com ciclos', icon: '🔥' },
+  { id: 'meditacao5', name: 'Zen', description: 'Completou 5 meditações', icon: '🧘' },
+  { id: 'nivel5', name: 'Evoluído', description: 'Alcançou nível 5', icon: '⭐' },
+];
+
 const initialState: AppState = {
   projects: [{ id: 'default', name: 'Projeto Padrão', color: '#dc3545' }],
   notes: [],
@@ -262,6 +301,15 @@ const initialState: AppState = {
   draft: '',
   pomodoroStats: { focusSessions: 0, totalMinutes: 0 },
   wellnessStats: { breaks: [] },
+  gamificationStats: {
+    pontos: 0,
+    nivel: 1,
+    historico: [],
+    badges: [],
+    focusDuration: 25,
+    shortBreakDuration: 5,
+    longBreakDuration: 15,
+  },
   noteTemplates: [],
   taskTemplates: [],
   financialAccounts: [],
@@ -652,6 +700,60 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
+  const addGamificationPoints = (pontos: number, tipo: string, descricao: string) => {
+    setState(prev => {
+      const novoHistorico = {
+        id: Date.now().toString(),
+        tipo,
+        pontos,
+        descricao,
+        timestamp: new Date().toISOString(),
+      };
+      
+      const novosPontos = prev.gamificationStats.pontos + pontos;
+      const novoNivel = Math.floor(novosPontos / 150) + 1;
+      
+      return {
+        ...prev,
+        gamificationStats: {
+          ...prev.gamificationStats,
+          pontos: novosPontos,
+          nivel: novoNivel,
+          historico: [...prev.gamificationStats.historico, novoHistorico],
+        },
+      };
+    });
+  };
+
+  const unlockBadge = (badgeId: string) => {
+    setState(prev => {
+      const badge = AVAILABLE_BADGES.find(b => b.id === badgeId);
+      if (!badge || prev.gamificationStats.badges.some(b => b.id === badgeId)) {
+        return prev;
+      }
+      
+      return {
+        ...prev,
+        gamificationStats: {
+          ...prev.gamificationStats,
+          badges: [...prev.gamificationStats.badges, { ...badge, unlockedAt: new Date().toISOString() }],
+        },
+      };
+    });
+  };
+
+  const updateFocusDurations = (focus: number, shortBreak: number, longBreak: number) => {
+    setState(prev => ({
+      ...prev,
+      gamificationStats: {
+        ...prev.gamificationStats,
+        focusDuration: focus,
+        shortBreakDuration: shortBreak,
+        longBreakDuration: longBreak,
+      },
+    }));
+  };
+
   const addFinancialAccount = (account: Omit<FinancialAccount, 'id' | 'createdAt'>) => {
     const newAccount: FinancialAccount = {
       ...account,
@@ -813,6 +915,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         updateDraft,
         updatePomodoroStats,
         addWellnessBreak,
+        addGamificationPoints,
+        unlockBadge,
+        updateFocusDurations,
         searchQuery,
         setSearchQuery,
         addFinancialAccount,

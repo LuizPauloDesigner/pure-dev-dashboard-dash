@@ -15,6 +15,7 @@ import { Finance } from '@/components/Finance';
 import { Diary } from '@/components/Diary';
 import { Draft } from '@/components/Draft';
 import { Favorites } from '@/components/Favorites';
+import { Wellness } from '@/components/Wellness';
 import { Settings } from '@/components/Settings';
 import { CommandPalette } from '@/components/CommandPalette';
 
@@ -33,9 +34,10 @@ const MainContent = () => {
         {currentTab === 'passwords' && <Passwords />}
         {currentTab === 'contacts' && <Contacts />}
         {currentTab === 'finance' && <Finance />}
-        {currentTab === 'diary' && <Diary />}
-        {currentTab === 'draft' && <Draft />}
-        {currentTab === 'settings' && <Settings />}
+      {currentTab === 'diary' && <Diary />}
+      {currentTab === 'wellness' && <Wellness />}
+      {currentTab === 'draft' && <Draft />}
+      {currentTab === 'settings' && <Settings />}
     </main>
   );
 };

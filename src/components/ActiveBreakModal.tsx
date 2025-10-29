@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
-import { Timer, Coffee, Eye, Droplet } from 'lucide-react';
+import { Timer, Coffee, Eye, Droplet, Dumbbell, Wind } from 'lucide-react';
 
 interface ActiveBreakModalProps {
   isOpen: boolean;
@@ -10,6 +10,34 @@ interface ActiveBreakModalProps {
   breakType: 'short' | 'long';
 }
 
+const EXERCISE_SUGGESTIONS = [
+  {
+    icon: Coffee,
+    title: 'Alongue o pescoço e os ombros',
+    description: 'Faça movimentos circulares suaves por 30 segundos',
+  },
+  {
+    icon: Droplet,
+    title: 'Beba um copo d\'água',
+    description: 'Mantenha-se hidratado para melhor concentração',
+  },
+  {
+    icon: Eye,
+    title: 'Descanse os olhos',
+    description: 'Olhe para algo distante por 20 segundos (regra 20-20-20)',
+  },
+  {
+    icon: Dumbbell,
+    title: 'Levante e estique as pernas',
+    description: 'Faça alguns passos ou agachamentos leves',
+  },
+  {
+    icon: Wind,
+    title: 'Respire profundamente',
+    description: '5 respirações profundas pelo nariz e solte pela boca',
+  },
+];
+
 export const ActiveBreakModal = ({ 
   isOpen, 
   onComplete, 
@@ -17,6 +45,11 @@ export const ActiveBreakModal = ({
   duration,
   breakType 
 }: ActiveBreakModalProps) => {
+  // Pega 3 sugestões aleatórias
+  const randomExercises = EXERCISE_SUGGESTIONS
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 3);
+
   return (
     <Dialog open={isOpen} modal>
       <DialogContent 
@@ -47,35 +80,20 @@ export const ActiveBreakModal = ({
             <h3 className="font-semibold text-lg mb-4">Sugestões de Atividades:</h3>
             
             <div className="space-y-3">
-              <div className="flex items-start gap-3 p-3 rounded-md bg-card border">
-                <Coffee className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                <div>
-                  <p className="font-medium">Alongue o pescoço e os ombros</p>
-                  <p className="text-sm text-muted-foreground">
-                    Faça movimentos circulares suaves por 30 segundos
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 p-3 rounded-md bg-card border">
-                <Droplet className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                <div>
-                  <p className="font-medium">Beba um copo d'água</p>
-                  <p className="text-sm text-muted-foreground">
-                    Mantenha-se hidratado para melhor concentração
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 p-3 rounded-md bg-card border">
-                <Eye className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                <div>
-                  <p className="font-medium">Descanse os olhos</p>
-                  <p className="text-sm text-muted-foreground">
-                    Olhe para algo distante por 20 segundos (regra 20-20-20)
-                  </p>
-                </div>
-              </div>
+              {randomExercises.map((exercise, index) => {
+                const Icon = exercise.icon;
+                return (
+                  <div key={index} className="flex items-start gap-3 p-3 rounded-md bg-card border">
+                    <Icon className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-medium">{exercise.title}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {exercise.description}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -85,7 +103,7 @@ export const ActiveBreakModal = ({
               size="lg"
               className="w-full text-lg h-12"
             >
-              ✓ Pausa Concluída e Retornar
+              ✓ Pausa Concluída (+15 Pontos)
             </Button>
             
             <Button 
@@ -94,7 +112,7 @@ export const ActiveBreakModal = ({
               size="sm"
               className="text-muted-foreground hover:text-foreground"
             >
-              Pular Pausa
+              Pular Pausa (-5 Pontos)
             </Button>
           </div>
         </div>

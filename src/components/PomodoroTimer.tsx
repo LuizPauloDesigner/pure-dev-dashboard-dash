@@ -7,20 +7,20 @@ import { ActiveBreakModal } from './ActiveBreakModal';
 
 type TimerMode = 'focus' | 'shortBreak' | 'longBreak';
 
-const TIMER_DURATIONS = {
-  focus: 25 * 60,
-  shortBreak: 5 * 60,
-  longBreak: 15 * 60,
-};
-
 export const PomodoroTimer = () => {
-  const { updatePomodoroStats, state, addWellnessBreak } = useApp();
+  const { updatePomodoroStats, state, addWellnessBreak, addGamificationPoints, unlockBadge } = useApp();
   const [mode, setMode] = useState<TimerMode>('focus');
-  const [timeLeft, setTimeLeft] = useState(TIMER_DURATIONS.focus);
+  const [timeLeft, setTimeLeft] = useState(state.gamificationStats.focusDuration * 60);
   const [isRunning, setIsRunning] = useState(false);
   const [showBreakModal, setShowBreakModal] = useState(false);
   const [pendingBreakType, setPendingBreakType] = useState<'short' | 'long'>('short');
   const intervalRef = useRef<NodeJS.Timeout>();
+
+  const TIMER_DURATIONS = {
+    focus: state.gamificationStats.focusDuration * 60,
+    shortBreak: state.gamificationStats.shortBreakDuration * 60,
+    longBreak: state.gamificationStats.longBreakDuration * 60,
+  };
 
   useEffect(() => {
     if (isRunning) {
@@ -42,18 +42,65 @@ export const PomodoroTimer = () => {
     };
   }, [isRunning, mode]);
 
+  // Atualizar duração quando as configurações mudarem
+  useEffect(() => {
+    if (!isRunning) {
+      setTimeLeft(TIMER_DURATIONS[mode]);
+    }
+  }, [state.gamificationStats.focusDuration, state.gamificationStats.shortBreakDuration, state.gamificationStats.longBreakDuration]);
+
+  const checkBadges = () => {
+    const focusSessions = state.pomodoroStats.focusSessions + 1;
+    const completedBreaks = state.wellnessStats.breaks.filter(b => b.adesaoStatus === 'Concluida').length;
+
+    // Verificar badges de foco
+    if (focusSessions === 10 && !state.gamificationStats.badges.some(b => b.id === 'foco10')) {
+      unlockBadge('foco10');
+      toast.success('🏆 Badge desbloqueado: Focado!');
+    } else if (focusSessions === 25 && !state.gamificationStats.badges.some(b => b.id === 'foco25')) {
+      unlockBadge('foco25');
+      toast.success('🏆 Badge desbloqueado: Concentrado!');
+    } else if (focusSessions === 50 && !state.gamificationStats.badges.some(b => b.id === 'foco50')) {
+      unlockBadge('foco50');
+      toast.success('🏆 Badge desbloqueado: Mestre do Foco!');
+    }
+
+    // Verificar badges de pausas
+    if (completedBreaks === 10 && !state.gamificationStats.badges.some(b => b.id === 'pausa10')) {
+      unlockBadge('pausa10');
+      toast.success('🏆 Badge desbloqueado: Cuidadoso!');
+    } else if (completedBreaks === 25 && !state.gamificationStats.badges.some(b => b.id === 'pausa25')) {
+      unlockBadge('pausa25');
+      toast.success('🏆 Badge desbloqueado: Bem-Estar!');
+    }
+
+    // Verificar badge de nível
+    const nivel = state.gamificationStats.nivel;
+    if (nivel >= 5 && !state.gamificationStats.badges.some(b => b.id === 'nivel5')) {
+      unlockBadge('nivel5');
+      toast.success('🏆 Badge desbloqueado: Evoluído!');
+    }
+  };
+
   const handleTimerComplete = () => {
     setIsRunning(false);
     
     if (mode === 'focus') {
+      const newFocusSessions = state.pomodoroStats.focusSessions + 1;
       updatePomodoroStats({
-        focusSessions: state.pomodoroStats.focusSessions + 1,
-        totalMinutes: state.pomodoroStats.totalMinutes + 25,
+        focusSessions: newFocusSessions,
+        totalMinutes: state.pomodoroStats.totalMinutes + state.gamificationStats.focusDuration,
       });
-      toast.success('Sessão de foco concluída!');
+      
+      // Adicionar pontos por completar foco
+      addGamificationPoints(10, 'foco', 'Completou um ciclo de foco');
+      toast.success('Sessão de foco concluída! +10 XP');
+      
+      // Verificar badges
+      checkBadges();
       
       // Disparar modal de Pausa Ativa
-      const breakType = (state.pomodoroStats.focusSessions + 1) % 4 === 0 ? 'long' : 'short';
+      const breakType = newFocusSessions % 4 === 0 ? 'long' : 'short';
       setPendingBreakType(breakType);
       setShowBreakModal(true);
     } else {
@@ -66,7 +113,9 @@ export const PomodoroTimer = () => {
   };
 
   const handleBreakComplete = () => {
-    const breakDuration = pendingBreakType === 'short' ? 5 : 15;
+    const breakDuration = pendingBreakType === 'short' 
+      ? state.gamificationStats.shortBreakDuration 
+      : state.gamificationStats.longBreakDuration;
     
     addWellnessBreak({
       dataHora: new Date().toISOString(),
@@ -75,13 +124,21 @@ export const PomodoroTimer = () => {
       duracaoPausa: breakDuration,
     });
     
+    // Adicionar pontos por completar pausa
+    addGamificationPoints(15, 'pausa_ativa', 'Completou uma pausa ativa');
+    
     setShowBreakModal(false);
     changeMode(pendingBreakType === 'short' ? 'shortBreak' : 'longBreak');
-    toast.success('Pausa ativa concluída! Continue assim!');
+    toast.success('Pausa ativa concluída! +15 XP 🎉');
+    
+    // Verificar badges após pausa
+    checkBadges();
   };
 
   const handleBreakSkip = () => {
-    const breakDuration = pendingBreakType === 'short' ? 5 : 15;
+    const breakDuration = pendingBreakType === 'short' 
+      ? state.gamificationStats.shortBreakDuration 
+      : state.gamificationStats.longBreakDuration;
     
     addWellnessBreak({
       dataHora: new Date().toISOString(),
@@ -90,9 +147,12 @@ export const PomodoroTimer = () => {
       duracaoPausa: breakDuration,
     });
     
+    // Penalidade por pular pausa
+    addGamificationPoints(-5, 'pausa_pulada', 'Pulou uma pausa ativa');
+    
     setShowBreakModal(false);
     changeMode(pendingBreakType === 'short' ? 'shortBreak' : 'longBreak');
-    toast.info('Pausa ignorada. Lembre-se de cuidar da sua saúde!');
+    toast.warning('Pausa ignorada. -5 XP. Lembre-se de cuidar da sua saúde! ⚠️');
   };
 
   const toggleTimer = () => setIsRunning(!isRunning);

@@ -25,9 +25,16 @@ import {
   Calendar,
   FileEdit,
   Settings,
+  LucideIcon,
 } from 'lucide-react';
 
-const menuItems = [
+interface MenuItem {
+  id: string;
+  label: string;
+  icon: LucideIcon | string;
+}
+
+const menuItems: MenuItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'favorites', label: 'Favoritos', icon: Star },
   { id: 'notes', label: 'Notas', icon: FileText },
@@ -39,6 +46,7 @@ const menuItems = [
   { id: 'contacts', label: 'Contatos', icon: User },
   { id: 'finance', label: 'Financeiro', icon: DollarSign },
   { id: 'diary', label: 'Diário', icon: Calendar },
+  { id: 'wellness', label: 'Bem-Estar', icon: '🧘' },
   { id: 'draft', label: 'Rascunho', icon: FileEdit },
   { id: 'settings', label: 'Config', icon: Settings },
 ];
@@ -58,8 +66,9 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => {
-                const Icon = item.icon;
                 const isActive = currentTab === item.id;
+                const IconComponent = typeof item.icon !== 'string' ? item.icon : null;
+                const iconString = typeof item.icon === 'string' ? item.icon : null;
                 
                 return (
                   <SidebarMenuItem key={item.id}>
@@ -74,7 +83,11 @@ export function AppSidebar() {
                       isActive={isActive}
                       tooltip={isCollapsed ? item.label : undefined}
                     >
-                      <Icon className="h-4 w-4" />
+                      {IconComponent ? (
+                        <IconComponent className="h-4 w-4" />
+                      ) : (
+                        <span className="text-base mr-2">{iconString}</span>
+                      )}
                       <span>{item.label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
