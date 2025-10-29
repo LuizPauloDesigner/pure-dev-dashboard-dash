@@ -37,6 +37,7 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'wellness', label: 'Bem-Estar', icon: Heart },
   { id: 'favorites', label: 'Favoritos', icon: Star },
   { id: 'notes', label: 'Notas', icon: FileText },
   { id: 'prompts', label: 'Prompts IA', icon: Sparkles },
@@ -47,7 +48,6 @@ const menuItems: MenuItem[] = [
   { id: 'contacts', label: 'Contatos', icon: User },
   { id: 'finance', label: 'Financeiro', icon: DollarSign },
   { id: 'diary', label: 'Diário', icon: Calendar },
-  { id: 'wellness', label: 'Bem-Estar', icon: Heart },
   { id: 'draft', label: 'Rascunho', icon: FileEdit },
   { id: 'settings', label: 'Config', icon: Settings },
 ];
