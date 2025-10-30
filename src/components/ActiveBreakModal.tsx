@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Timer, Coffee, Eye, Droplet, Dumbbell, Wind } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 interface ActiveBreakModalProps {
   isOpen: boolean;
@@ -48,10 +48,12 @@ export const ActiveBreakModal = ({
 }: ActiveBreakModalProps) => {
   const [timeLeft, setTimeLeft] = useState(duration * 60);
   
-  // Pega 3 sugestões aleatórias
-  const randomExercises = EXERCISE_SUGGESTIONS
-    .sort(() => Math.random() - 0.5)
-    .slice(0, 3);
+  // Memoriza 3 sugestões aleatórias que só mudam quando o modal abre
+  const randomExercises = useMemo(() => {
+    return EXERCISE_SUGGESTIONS
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 3);
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
