@@ -389,6 +389,10 @@ export const Settings = () => {
             <span className="text-muted-foreground">Contatos:</span>
             <span className="font-medium">{(state.contacts || []).length}</span>
           </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Listas Pessoais:</span>
+            <span className="font-medium">{(state.checklists || []).length}</span>
+          </div>
         </CardContent>
       </Card>
 

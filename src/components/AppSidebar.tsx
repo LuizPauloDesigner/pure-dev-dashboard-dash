@@ -26,6 +26,7 @@ import {
   FileEdit,
   Settings,
   Heart,
+  ListChecks,
   LucideIcon,
 } from 'lucide-react';
 
@@ -44,6 +45,7 @@ const menuItems: MenuItem[] = [
   { id: 'snippets', label: 'Snippets', icon: Code },
   { id: 'cheatsheet', label: 'Cheatsheet', icon: BookOpen },
   { id: 'kanban', label: 'Kanban', icon: Columns },
+  { id: 'checklists', label: 'Listas Pessoais', icon: ListChecks },
   { id: 'passwords', label: 'Senhas', icon: Lock },
   { id: 'contacts', label: 'Contatos', icon: User },
   { id: 'finance', label: 'Financeiro', icon: DollarSign },

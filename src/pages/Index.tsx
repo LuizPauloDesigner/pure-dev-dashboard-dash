@@ -11,6 +11,7 @@ import { Cheatsheet } from '@/components/Cheatsheet';
 import { Kanban } from '@/components/Kanban';
 import { Passwords } from '@/components/Passwords';
 import { Contacts } from '@/components/Contacts';
+import { Checklists } from '@/components/Checklists';
 import { Finance } from '@/components/Finance';
 import { Diary } from '@/components/Diary';
 import { Draft } from '@/components/Draft';
@@ -31,6 +32,7 @@ const MainContent = () => {
       {currentTab === 'snippets' && <Snippets />}
       {currentTab === 'cheatsheet' && <Cheatsheet />}
       {currentTab === 'kanban' && <Kanban />}
+      {currentTab === 'checklists' && <Checklists />}
         {currentTab === 'passwords' && <Passwords />}
         {currentTab === 'contacts' && <Contacts />}
         {currentTab === 'finance' && <Finance />}

@@ -81,6 +81,20 @@ export interface Contact {
   createdAt: string;
 }
 
+export interface ChecklistItem {
+  id: string;
+  texto: string;
+  concluido: boolean;
+}
+
+export interface Checklist {
+  id: string;
+  projectId: string;
+  titulo: string;
+  itens: ChecklistItem[];
+  createdAt: string;
+}
+
 export interface Bookmark {
   id: string;
   projectId: string;
@@ -206,6 +220,8 @@ export interface AppState {
   contacts: Contact[];
   contactTags: string[];
   encryptedContacts?: string;
+  checklists: Checklist[];
+  encryptedChecklists?: string;
   musicPlayerVolume: number;
   musicPlayerShuffle: boolean;
   musicPlayerRepeat: boolean;
@@ -273,6 +289,12 @@ interface AppContextType {
   deleteContact: (id: string) => void;
   addContactTag: (tag: string) => void;
   deleteContactTag: (tag: string) => void;
+  addChecklist: (checklist: Omit<Checklist, 'id' | 'createdAt'>) => void;
+  updateChecklist: (id: string, updates: Partial<Checklist>) => void;
+  deleteChecklist: (id: string) => void;
+  addChecklistItem: (checklistId: string, item: Omit<ChecklistItem, 'id'>) => void;
+  updateChecklistItem: (checklistId: string, itemId: string, updates: Partial<ChecklistItem>) => void;
+  deleteChecklistItem: (checklistId: string, itemId: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -318,6 +340,7 @@ const initialState: AppState = {
   financialTransactions: [],
   contacts: [],
   contactTags: [],
+  checklists: [],
   musicPlayerVolume: 0.7,
   musicPlayerShuffle: false,
   musicPlayerRepeat: false,
@@ -348,6 +371,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           financialTransactions: parsed.financialTransactions || [],
           contacts: parsed.contacts || [],
           contactTags: parsed.contactTags || [],
+          checklists: parsed.checklists || [],
           musicPlayerVolume: parsed.musicPlayerVolume ?? 0.7,
           musicPlayerShuffle: parsed.musicPlayerShuffle ?? false,
           musicPlayerRepeat: parsed.musicPlayerRepeat ?? false,
@@ -876,6 +900,70 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
+  const addChecklist = (checklist: Omit<Checklist, 'id' | 'createdAt'>) => {
+    const newChecklist: Checklist = {
+      ...checklist,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+    };
+    setState(prev => ({ ...prev, checklists: [...prev.checklists, newChecklist] }));
+  };
+
+  const updateChecklist = (id: string, updates: Partial<Checklist>) => {
+    setState(prev => ({
+      ...prev,
+      checklists: prev.checklists.map(c => c.id === id ? { ...c, ...updates } : c),
+    }));
+  };
+
+  const deleteChecklist = (id: string) => {
+    setState(prev => ({ ...prev, checklists: prev.checklists.filter(c => c.id !== id) }));
+  };
+
+  const addChecklistItem = (checklistId: string, item: Omit<ChecklistItem, 'id'>) => {
+    setState(prev => ({
+      ...prev,
+      checklists: prev.checklists.map(checklist => 
+        checklist.id === checklistId 
+          ? {
+              ...checklist,
+              itens: [...checklist.itens, { ...item, id: Date.now().toString() }]
+            }
+          : checklist
+      ),
+    }));
+  };
+
+  const updateChecklistItem = (checklistId: string, itemId: string, updates: Partial<ChecklistItem>) => {
+    setState(prev => ({
+      ...prev,
+      checklists: prev.checklists.map(checklist =>
+        checklist.id === checklistId
+          ? {
+              ...checklist,
+              itens: checklist.itens.map(item =>
+                item.id === itemId ? { ...item, ...updates } : item
+              )
+            }
+          : checklist
+      ),
+    }));
+  };
+
+  const deleteChecklistItem = (checklistId: string, itemId: string) => {
+    setState(prev => ({
+      ...prev,
+      checklists: prev.checklists.map(checklist =>
+        checklist.id === checklistId
+          ? {
+              ...checklist,
+              itens: checklist.itens.filter(item => item.id !== itemId)
+            }
+          : checklist
+      ),
+    }));
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -940,6 +1028,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         deleteContact,
         addContactTag,
         deleteContactTag,
+        addChecklist,
+        updateChecklist,
+        deleteChecklist,
+        addChecklistItem,
+        updateChecklistItem,
+        deleteChecklistItem,
       }}
     >
       {children}
