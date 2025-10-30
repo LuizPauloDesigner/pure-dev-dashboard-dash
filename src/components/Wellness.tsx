@@ -1,6 +1,6 @@
 import { useApp } from '@/contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Trophy, Star, Zap, Play, Pause, Volume2, Brain, Heart, Settings as SettingsIcon } from 'lucide-react';
+import { Trophy, Star, Zap, Play, Pause, Volume2, Brain, Heart, Settings as SettingsIcon, Upload } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Line } from 'react-chartjs-2';
@@ -17,6 +17,12 @@ export const Wellness = () => {
   const [focusDuration, setFocusDuration] = useState(state.gamificationStats.focusDuration);
   const [shortBreak, setShortBreak] = useState(state.gamificationStats.shortBreakDuration);
   const [longBreak, setLongBreak] = useState(state.gamificationStats.longBreakDuration);
+  
+  const [customAudios, setCustomAudios] = useState({
+    meditation: '/audios/meditation/default.mp3',
+    lofi: '/audios/lofi/default.mp3',
+    whitenoise: '/audios/whitenoise/default.mp3',
+  });
 
   const completedBreaks = state.wellnessStats.breaks.filter(b => b.adesaoStatus === 'Concluida').length;
   const totalBreaks = state.wellnessStats.breaks.length;
@@ -79,16 +85,11 @@ export const Wellness = () => {
       audioRef.current?.pause();
       setAudioPlaying(null);
     } else {
-      // URLs de áudio royalty-free
-      const audioUrls: { [key: string]: string } = {
-        meditation: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', // Placeholder
-        lofi: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', // Placeholder
-        whitenoise: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', // Placeholder
-      };
-
       if (audioRef.current) {
-        audioRef.current.src = audioUrls[type];
-        audioRef.current.play();
+        audioRef.current.src = customAudios[type as keyof typeof customAudios];
+        audioRef.current.play().catch(() => {
+          toast.error('Erro ao carregar áudio. Coloque seus arquivos nas pastas: public/audios/meditation, public/audios/lofi, public/audios/whitenoise');
+        });
         setAudioPlaying(type);
         
         // Dar pontos por meditação
@@ -97,6 +98,15 @@ export const Wellness = () => {
           toast.success('+20 pontos por meditação! 🧘');
         }
       }
+    }
+  };
+
+  const handleAudioUpload = (type: keyof typeof customAudios, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setCustomAudios(prev => ({ ...prev, [type]: url }));
+      toast.success('Áudio carregado com sucesso!');
     }
   };
 
@@ -214,45 +224,90 @@ export const Wellness = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Áudios para relaxamento e foco profundo
+            Áudios para relaxamento e foco profundo. Coloque seus arquivos MP3 nas pastas: public/audios/meditation, public/audios/lofi, public/audios/whitenoise
           </p>
           
           <div className="grid gap-3 md:grid-cols-3">
-            <Button
-              variant={audioPlaying === 'meditation' ? 'default' : 'outline'}
-              className="h-auto flex-col gap-2 py-4"
-              onClick={() => handlePlayAudio('meditation')}
-            >
-              {audioPlaying === 'meditation' ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
-              <div className="text-center">
-                <div className="font-semibold">Meditação 3min</div>
-                <div className="text-xs opacity-70">+20 XP ao completar</div>
-              </div>
-            </Button>
+            <div className="space-y-2">
+              <Button
+                variant={audioPlaying === 'meditation' ? 'default' : 'outline'}
+                className="h-auto flex-col gap-2 py-4 w-full"
+                onClick={() => handlePlayAudio('meditation')}
+              >
+                {audioPlaying === 'meditation' ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+                <div className="text-center">
+                  <div className="font-semibold">Meditação 3min</div>
+                  <div className="text-xs opacity-70">+20 XP ao completar</div>
+                </div>
+              </Button>
+              <Label htmlFor="meditation-upload" className="cursor-pointer">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors border border-dashed rounded p-2 justify-center">
+                  <Upload className="h-3 w-3" />
+                  Carregar áudio
+                </div>
+                <Input
+                  id="meditation-upload"
+                  type="file"
+                  accept="audio/*"
+                  className="hidden"
+                  onChange={(e) => handleAudioUpload('meditation', e)}
+                />
+              </Label>
+            </div>
 
-            <Button
-              variant={audioPlaying === 'lofi' ? 'default' : 'outline'}
-              className="h-auto flex-col gap-2 py-4"
-              onClick={() => handlePlayAudio('lofi')}
-            >
-              {audioPlaying === 'lofi' ? <Pause className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-              <div className="text-center">
-                <div className="font-semibold">Lo-fi Music</div>
-                <div className="text-xs opacity-70">Foco suave</div>
-              </div>
-            </Button>
+            <div className="space-y-2">
+              <Button
+                variant={audioPlaying === 'lofi' ? 'default' : 'outline'}
+                className="h-auto flex-col gap-2 py-4 w-full"
+                onClick={() => handlePlayAudio('lofi')}
+              >
+                {audioPlaying === 'lofi' ? <Pause className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                <div className="text-center">
+                  <div className="font-semibold">Lo-fi Music</div>
+                  <div className="text-xs opacity-70">Foco suave</div>
+                </div>
+              </Button>
+              <Label htmlFor="lofi-upload" className="cursor-pointer">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors border border-dashed rounded p-2 justify-center">
+                  <Upload className="h-3 w-3" />
+                  Carregar áudio
+                </div>
+                <Input
+                  id="lofi-upload"
+                  type="file"
+                  accept="audio/*"
+                  className="hidden"
+                  onChange={(e) => handleAudioUpload('lofi', e)}
+                />
+              </Label>
+            </div>
 
-            <Button
-              variant={audioPlaying === 'whitenoise' ? 'default' : 'outline'}
-              className="h-auto flex-col gap-2 py-4"
-              onClick={() => handlePlayAudio('whitenoise')}
-            >
-              {audioPlaying === 'whitenoise' ? <Pause className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-              <div className="text-center">
-                <div className="font-semibold">Ruído Branco</div>
-                <div className="text-xs opacity-70">Concentração máxima</div>
-              </div>
-            </Button>
+            <div className="space-y-2">
+              <Button
+                variant={audioPlaying === 'whitenoise' ? 'default' : 'outline'}
+                className="h-auto flex-col gap-2 py-4 w-full"
+                onClick={() => handlePlayAudio('whitenoise')}
+              >
+                {audioPlaying === 'whitenoise' ? <Pause className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                <div className="text-center">
+                  <div className="font-semibold">Ruído Branco</div>
+                  <div className="text-xs opacity-70">Concentração máxima</div>
+                </div>
+              </Button>
+              <Label htmlFor="whitenoise-upload" className="cursor-pointer">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors border border-dashed rounded p-2 justify-center">
+                  <Upload className="h-3 w-3" />
+                  Carregar áudio
+                </div>
+                <Input
+                  id="whitenoise-upload"
+                  type="file"
+                  accept="audio/*"
+                  className="hidden"
+                  onChange={(e) => handleAudioUpload('whitenoise', e)}
+                />
+              </Label>
+            </div>
           </div>
 
           <audio ref={audioRef} onEnded={() => setAudioPlaying(null)} />

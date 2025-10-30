@@ -6,7 +6,7 @@ import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
-import { Plus, Trash2, GripVertical } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Pencil } from 'lucide-react';
 import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSensor, useDroppable, DragOverEvent } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -49,7 +49,7 @@ function DroppableColumn({
   );
 }
 
-function SortableTask({ task, onDelete }: { task: KanbanTask; onDelete: () => void }) {
+function SortableTask({ task, onDelete, onEdit }: { task: KanbanTask; onDelete: () => void; onEdit: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
   });
@@ -79,12 +79,20 @@ function SortableTask({ task, onDelete }: { task: KanbanTask; onDelete: () => vo
                 </span>
               )}
             </div>
-            <button
-              onClick={onDelete}
-              className="opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </button>
+            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={onEdit}
+                className="p-1 hover:bg-muted rounded"
+              >
+                <Pencil className="h-4 w-4 text-primary" />
+              </button>
+              <button
+                onClick={onDelete}
+                className="p-1 hover:bg-muted rounded"
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -95,6 +103,8 @@ function SortableTask({ task, onDelete }: { task: KanbanTask; onDelete: () => vo
 export const Kanban = () => {
   const { state, currentProject, addKanbanTask, updateKanbanTask, deleteKanbanTask } = useApp();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<KanbanTask | null>(null);
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
@@ -153,6 +163,29 @@ export const Kanban = () => {
     });
     setIsDialogOpen(false);
     toast.success('Tarefa criada');
+  };
+
+  const handleEditTask = () => {
+    if (!editingTask || !editingTask.title.trim()) {
+      toast.error('O título é obrigatório');
+      return;
+    }
+
+    updateKanbanTask(editingTask.id, {
+      title: editingTask.title,
+      description: editingTask.description,
+      column: editingTask.column,
+      recurrence: editingTask.recurrence,
+    });
+
+    setEditingTask(null);
+    setIsEditDialogOpen(false);
+    toast.success('Tarefa atualizada');
+  };
+
+  const openEditDialog = (task: KanbanTask) => {
+    setEditingTask({ ...task });
+    setIsEditDialogOpen(true);
   };
 
   return (
@@ -215,6 +248,57 @@ export const Kanban = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Tarefa</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-4">
+              <Input
+                placeholder="Título"
+                value={editingTask?.title || ''}
+                onChange={(e) => setEditingTask(prev => prev ? { ...prev, title: e.target.value } : null)}
+              />
+              <Textarea
+                placeholder="Descrição (opcional)"
+                value={editingTask?.description || ''}
+                onChange={(e) => setEditingTask(prev => prev ? { ...prev, description: e.target.value } : null)}
+              />
+              <Select
+                value={editingTask?.column}
+                onValueChange={(value: any) => setEditingTask(prev => prev ? { ...prev, column: value } : null)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {columns.map(col => (
+                    <SelectItem key={col.id} value={col.id}>
+                      {col.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={editingTask?.recurrence}
+                onValueChange={(value: any) => setEditingTask(prev => prev ? { ...prev, recurrence: value } : null)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem Recorrência</SelectItem>
+                  <SelectItem value="daily">Diariamente</SelectItem>
+                  <SelectItem value="weekly">Semanalmente</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button onClick={handleEditTask} className="w-full">
+                Salvar Alterações
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
@@ -229,6 +313,7 @@ export const Kanban = () => {
                     <SortableTask
                       key={task.id}
                       task={task}
+                      onEdit={() => openEditDialog(task)}
                       onDelete={() => {
                         deleteKanbanTask(task.id);
                         toast.success('Tarefa deletada');

@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Timer, Coffee, Eye, Droplet, Dumbbell, Wind } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 interface ActiveBreakModalProps {
   isOpen: boolean;
@@ -45,10 +46,34 @@ export const ActiveBreakModal = ({
   duration,
   breakType 
 }: ActiveBreakModalProps) => {
+  const [timeLeft, setTimeLeft] = useState(duration * 60);
+  
   // Pega 3 sugestões aleatórias
   const randomExercises = EXERCISE_SUGGESTIONS
     .sort(() => Math.random() - 0.5)
     .slice(0, 3);
+
+  useEffect(() => {
+    if (isOpen) {
+      setTimeLeft(duration * 60);
+    }
+  }, [isOpen, duration]);
+
+  useEffect(() => {
+    if (!isOpen || timeLeft <= 0) return;
+
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => Math.max(0, prev - 1));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isOpen, timeLeft]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   return (
     <Dialog open={isOpen} modal>
@@ -64,13 +89,18 @@ export const ActiveBreakModal = ({
         </DialogHeader>
         
         <div className="space-y-6 py-4">
-          <div className="text-center space-y-2">
+          <div className="text-center space-y-3">
             <div className="flex items-center justify-center gap-2 text-primary">
               <Timer className="h-5 w-5" />
               <span className="text-lg font-semibold">
                 Pausa {breakType === 'short' ? 'Curta' : 'Longa'} - {duration} minutos
               </span>
             </div>
+            
+            <div className="text-5xl font-bold text-primary">
+              {formatTime(timeLeft)}
+            </div>
+            
             <p className="text-lg text-muted-foreground">
               Cuide do seu corpo e da sua mente. Mova-se um pouco!
             </p>
