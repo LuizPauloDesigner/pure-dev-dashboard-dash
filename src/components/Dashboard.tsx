@@ -77,11 +77,13 @@ export const Dashboard = () => {
     ? avgMoodNum >= 4.5 ? '🤩' : avgMoodNum >= 3.5 ? '😁' : avgMoodNum >= 2.5 ? '🙂' : avgMoodNum >= 1.5 ? '😐' : '😞'
     : null;
 
-  // Dados para o gráfico (por dia)
+  // Dados para o gráfico (por dia) - usando breaks como proxy de ciclos de foco
   const dailyFocusCycles = last7Days.map(date => {
-    // Aqui vamos considerar focusSessions dividido pelos dias (simplificação)
-    // Em uma implementação real, precisaríamos rastrear por data
-    return 0; // Placeholder - precisaria de dados diários de Pomodoro
+    const dayBreaks = last7DaysBreaks.filter(b => {
+      const breakDate = new Date(b.dataHora).toISOString().split('T')[0];
+      return breakDate === date;
+    });
+    return dayBreaks.length;
   });
 
   const dailyMoodAvg = last7Days.map(date => {
