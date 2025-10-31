@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
@@ -10,129 +10,45 @@ import {
   Volume2, 
   Shuffle, 
   Repeat,
+  Music,
   FolderOpen,
-  Music
+  RefreshCw,
+  XCircle
 } from 'lucide-react';
-import { useApp } from '@/contexts/AppContext';
 import { cn } from '@/lib/utils';
-
-interface MusicFile {
-  file: File;
-  name: string;
-  url: string;
-}
+import { useMusicLibrary } from '@/hooks/useMusicLibrary';
+import { useMusicPlayer } from '@/contexts/MusicPlayerContext';
 
 export const MusicPlayer = () => {
-  const { state, setMusicPlayerVolume, setMusicPlayerShuffle, setMusicPlayerRepeat } = useApp();
-  const [playlist, setPlaylist] = useState<MusicFile[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { tracks, isLoading, isConnected, connectLibrary, disconnectLibrary, reloadLibrary } = useMusicLibrary();
+  const { 
+    currentTrack, 
+    isPlaying, 
+    currentTime, 
+    duration,
+    volume,
+    shuffle,
+    repeat,
+    togglePlayPause,
+    playTrack,
+    playNext,
+    playPrevious,
+    seek,
+    setVolume,
+    setShuffle,
+    setRepeat,
+    setPlaylist
+  } = useMusicPlayer();
 
-  // Carregar pasta de músicas
-  const handleFolderSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const audioFiles = files.filter(file => 
-      /\.(mp3|m4a|ogg|wav|flac)$/i.test(file.name)
-    );
-
-    const musicFiles: MusicFile[] = audioFiles.map(file => ({
-      file,
-      name: file.name,
-      url: URL.createObjectURL(file)
-    }));
-
-    setPlaylist(musicFiles);
-    if (musicFiles.length > 0) {
-      setCurrentIndex(0);
-    }
-  };
-
-  // Tocar música
-  const playMusic = (index: number) => {
-    if (audioRef.current && playlist[index]) {
-      audioRef.current.src = playlist[index].url;
-      audioRef.current.volume = state.musicPlayerVolume;
-      audioRef.current.play();
-      setCurrentIndex(index);
-      setIsPlaying(true);
-    }
-  };
-
-  // Toggle play/pause
-  const togglePlayPause = () => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-      } else {
-        audioRef.current.play();
+  // Atualizar playlist no contexto quando tracks mudam
+  useEffect(() => {
+    if (tracks.length > 0) {
+      setPlaylist(tracks);
+      if (!currentTrack) {
+        playTrack(tracks[0]);
       }
-      setIsPlaying(!isPlaying);
     }
-  };
-
-  // Próxima música
-  const playNext = () => {
-    let nextIndex;
-    if (state.musicPlayerShuffle) {
-      nextIndex = Math.floor(Math.random() * playlist.length);
-    } else {
-      nextIndex = (currentIndex + 1) % playlist.length;
-    }
-    playMusic(nextIndex);
-  };
-
-  // Música anterior
-  const playPrevious = () => {
-    const prevIndex = (currentIndex - 1 + playlist.length) % playlist.length;
-    playMusic(prevIndex);
-  };
-
-  // Atualizar progresso
-  const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
-    }
-  };
-
-  // Atualizar duração
-  const handleLoadedMetadata = () => {
-    if (audioRef.current) {
-      setDuration(audioRef.current.duration);
-    }
-  };
-
-  // Quando a música termina
-  const handleEnded = () => {
-    if (state.musicPlayerRepeat) {
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0;
-        audioRef.current.play();
-      }
-    } else {
-      playNext();
-    }
-  };
-
-  // Buscar na música
-  const handleSeek = (value: number[]) => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = value[0];
-      setCurrentTime(value[0]);
-    }
-  };
-
-  // Controle de volume
-  const handleVolumeChange = (value: number[]) => {
-    const volume = value[0];
-    setMusicPlayerVolume(volume);
-    if (audioRef.current) {
-      audioRef.current.volume = volume;
-    }
-  };
+  }, [tracks]);
 
   // Formatar tempo
   const formatTime = (seconds: number) => {
@@ -142,116 +58,135 @@ export const MusicPlayer = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Inicializar primeira música quando playlist carrega
-  useEffect(() => {
-    if (playlist.length > 0 && audioRef.current) {
-      audioRef.current.src = playlist[0].url;
-      audioRef.current.volume = state.musicPlayerVolume;
-    }
-  }, [playlist, state.musicPlayerVolume]);
+  // Carregando
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
+        <Music className="h-24 w-24 text-muted-foreground/20 mb-6 animate-pulse" />
+        <h2 className="text-2xl font-bold mb-3">Carregando Biblioteca...</h2>
+        <p className="text-muted-foreground">Aguarde enquanto verificamos sua biblioteca de músicas</p>
+      </div>
+    );
+  }
 
-  // Estado inicial - sem playlist
-  if (playlist.length === 0) {
+  // Estado inicial - sem biblioteca conectada
+  if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
         <Music className="h-24 w-24 text-muted-foreground/20 mb-6" />
-        <h2 className="text-2xl font-bold mb-3">Player de Música</h2>
+        <h2 className="text-2xl font-bold mb-3">Player de Música Persistente</h2>
         <p className="text-muted-foreground mb-2 max-w-md">
-          Selecione uma pasta do seu computador contendo arquivos de música.
+          Conecte sua biblioteca de músicas uma única vez e ela ficará disponível automaticamente.
         </p>
         <p className="text-sm text-muted-foreground mb-6 max-w-md">
-          ⚠️ <strong>Importante:</strong> Devido às restrições de segurança do navegador, 
-          você precisará selecionar a pasta novamente sempre que recarregar a página.
+          ✨ <strong>Novo:</strong> Usa File System Access API para lembrar sua pasta de músicas 
+          mesmo após recarregar a página.
         </p>
-        <input
-          ref={fileInputRef}
-          type="file"
-          // @ts-ignore - webkitdirectory é suportado mas não está nos types
-          webkitdirectory="true"
-          directory="true"
-          multiple
-          onChange={handleFolderSelect}
-          className="hidden"
-        />
         <Button 
           size="lg" 
-          onClick={() => fileInputRef.current?.click()}
+          onClick={connectLibrary}
           className="gap-2"
         >
           <FolderOpen className="h-5 w-5" />
-          Selecionar Pasta de Músicas
+          Conectar Biblioteca de Músicas
         </Button>
       </div>
     );
   }
 
-  // Estado ativo - com playlist
+  // Estado ativo - com biblioteca conectada
   return (
     <div className="flex flex-col h-full">
-      {/* Área "Tocando Agora" */}
+      {/* Área "Tocando Agora" com Arte do Álbum */}
       <Card className="p-6 mb-4">
         <div className="flex items-center gap-4">
-          <div className="h-16 w-16 bg-primary/10 rounded-lg flex items-center justify-center">
-            <Music className="h-8 w-8 text-primary" />
+          <div className="h-20 w-20 bg-primary/10 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
+            {currentTrack?.artwork ? (
+              <img 
+                src={currentTrack.artwork} 
+                alt={currentTrack.album}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <Music className="h-10 w-10 text-primary" />
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs text-muted-foreground mb-1">Tocando Agora</p>
             <h3 className="text-lg font-semibold truncate">
-              {playlist[currentIndex]?.name || 'Nenhuma música'}
+              {currentTrack?.title || 'Nenhuma música'}
             </h3>
+            <p className="text-sm text-muted-foreground truncate">
+              {currentTrack?.artist} • {currentTrack?.album}
+            </p>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <FolderOpen className="h-4 w-4 mr-2" />
-            Trocar Pasta
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            // @ts-ignore
-            webkitdirectory="true"
-            directory="true"
-            multiple
-            onChange={handleFolderSelect}
-            className="hidden"
-          />
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={reloadLibrary}
+              title="Recarregar biblioteca"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={disconnectLibrary}
+              title="Desconectar biblioteca"
+            >
+              <XCircle className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </Card>
 
       {/* Lista de Reprodução */}
       <Card className="flex-1 overflow-hidden mb-4">
         <div className="p-4 border-b">
-          <h3 className="font-semibold">Playlist ({playlist.length} músicas)</h3>
+          <h3 className="font-semibold">Playlist ({tracks.length} músicas)</h3>
         </div>
-        <div className="overflow-y-auto max-h-[calc(100vh-400px)]">
-          {playlist.map((music, index) => (
+        <div className="overflow-y-auto max-h-[calc(100vh-450px)]">
+          {tracks.map((track, index) => (
             <button
               key={index}
-              onClick={() => playMusic(index)}
+              onClick={() => playTrack(track)}
               className={cn(
                 "w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors border-b border-border/50 flex items-center gap-3",
-                currentIndex === index && "bg-primary/10 hover:bg-primary/15"
+                currentTrack?.url === track.url && "bg-primary/10 hover:bg-primary/15"
               )}
             >
-              <div className={cn(
-                "h-8 w-8 rounded flex items-center justify-center flex-shrink-0",
-                currentIndex === index ? "bg-primary text-primary-foreground" : "bg-muted"
-              )}>
-                {currentIndex === index && isPlaying ? (
-                  <Pause className="h-4 w-4" />
+              <div className="h-12 w-12 bg-muted rounded flex items-center justify-center overflow-hidden flex-shrink-0">
+                {track.artwork ? (
+                  <img 
+                    src={track.artwork} 
+                    alt={track.album}
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
-                  <Play className="h-4 w-4" />
+                  <Music className="h-5 w-5 text-muted-foreground" />
                 )}
               </div>
-              <span className={cn(
-                "truncate",
-                currentIndex === index && "font-medium"
-              )}>
-                {music.name}
-              </span>
+              <div className="flex-1 min-w-0">
+                <p className={cn(
+                  "font-medium truncate",
+                  currentTrack?.url === track.url && "text-primary"
+                )}>
+                  {track.title}
+                </p>
+                <p className="text-sm text-muted-foreground truncate">
+                  {track.artist}
+                </p>
+              </div>
+              {currentTrack?.url === track.url && (
+                <div className="flex-shrink-0">
+                  {isPlaying ? (
+                    <Pause className="h-4 w-4 text-primary" />
+                  ) : (
+                    <Play className="h-4 w-4 text-primary" />
+                  )}
+                </div>
+              )}
             </button>
           ))}
         </div>
@@ -265,7 +200,7 @@ export const MusicPlayer = () => {
             value={[currentTime]}
             max={duration || 100}
             step={1}
-            onValueChange={handleSeek}
+            onValueChange={(val) => seek(val[0])}
             className="mb-2"
           />
           <div className="flex justify-between text-xs text-muted-foreground">
@@ -277,9 +212,9 @@ export const MusicPlayer = () => {
         {/* Controles Principais */}
         <div className="flex items-center justify-center gap-4 mb-4">
           <Button
-            variant={state.musicPlayerShuffle ? "default" : "outline"}
+            variant={shuffle ? "default" : "outline"}
             size="icon"
-            onClick={() => setMusicPlayerShuffle(!state.musicPlayerShuffle)}
+            onClick={() => setShuffle(!shuffle)}
           >
             <Shuffle className="h-4 w-4" />
           </Button>
@@ -313,9 +248,9 @@ export const MusicPlayer = () => {
           </Button>
 
           <Button
-            variant={state.musicPlayerRepeat ? "default" : "outline"}
+            variant={repeat ? "default" : "outline"}
             size="icon"
-            onClick={() => setMusicPlayerRepeat(!state.musicPlayerRepeat)}
+            onClick={() => setRepeat(!repeat)}
           >
             <Repeat className="h-4 w-4" />
           </Button>
@@ -325,25 +260,17 @@ export const MusicPlayer = () => {
         <div className="flex items-center gap-3">
           <Volume2 className="h-4 w-4 text-muted-foreground" />
           <Slider
-            value={[state.musicPlayerVolume]}
+            value={[volume]}
             max={1}
             step={0.01}
-            onValueChange={handleVolumeChange}
+            onValueChange={(val) => setVolume(val[0])}
             className="flex-1"
           />
           <span className="text-xs text-muted-foreground w-12 text-right">
-            {Math.round(state.musicPlayerVolume * 100)}%
+            {Math.round(volume * 100)}%
           </span>
         </div>
       </Card>
-
-      {/* Elemento de áudio oculto */}
-      <audio
-        ref={audioRef}
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
-        onEnded={handleEnded}
-      />
     </div>
   );
 };

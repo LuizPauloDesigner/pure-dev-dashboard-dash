@@ -82,6 +82,9 @@ export const PomodoroTimer = () => {
     }
   };
 
+  // Acessar player de música do contexto (se disponível)
+  const musicPlayerContext = (window as any).musicPlayerContext;
+
   const handleTimerComplete = () => {
     setIsRunning(false);
     
@@ -98,6 +101,11 @@ export const PomodoroTimer = () => {
       
       // Verificar badges
       checkBadges();
+      
+      // Pausar música ao abrir modal de pausa
+      if (musicPlayerContext?.pause) {
+        musicPlayerContext.pause();
+      }
       
       // Disparar modal de Pausa Ativa
       const breakType = newFocusSessions % 4 === 0 ? 'long' : 'short';
@@ -155,7 +163,20 @@ export const PomodoroTimer = () => {
     toast.warning('Pausa ignorada. -5 XP. Lembre-se de cuidar da sua saúde! ⚠️');
   };
 
-  const toggleTimer = () => setIsRunning(!isRunning);
+  const toggleTimer = () => {
+    const newIsRunning = !isRunning;
+    setIsRunning(newIsRunning);
+    
+    // Integração com player de música: tocar ao iniciar foco, pausar ao parar
+    const musicPlayerContext = (window as any).musicPlayerContext;
+    if (mode === 'focus' && musicPlayerContext) {
+      if (newIsRunning && musicPlayerContext.play) {
+        musicPlayerContext.play();
+      } else if (!newIsRunning && musicPlayerContext.pause) {
+        musicPlayerContext.pause();
+      }
+    }
+  };
 
   const resetTimer = () => {
     setIsRunning(false);
