@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { openDB, IDBPDatabase } from 'idb';
 import { toast } from 'sonner';
 
 export interface MusicTrack {
+  id: string;
   file: File;
   name: string;
   url: string;
@@ -10,53 +10,48 @@ export interface MusicTrack {
   artist: string;
   album: string;
   artwork?: string;
+  playlist: string;
 }
 
-const DB_NAME = 'MusicLibraryDB';
-const DB_VERSION = 1;
-const STORE_NAME = 'musicDirectory';
+export interface Playlist {
+  id: string;
+  name: string;
+  tracks: MusicTrack[];
+}
 
-// Inicializar IndexedDB
-const initDB = async (): Promise<IDBPDatabase> => {
-  return openDB(DB_NAME, DB_VERSION, {
-    upgrade(db) {
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME);
-      }
-    },
-  });
-};
+const STORAGE_KEY = 'musicLibrary';
 
 export const useMusicLibrary = () => {
-  const [tracks, setTracks] = useState<MusicTrack[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [directoryHandle, setDirectoryHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Carregar handle salvo do IndexedDB
-  const loadSavedDirectory = useCallback(async () => {
+  // Carregar biblioteca do localStorage
+  const loadSavedLibrary = useCallback(() => {
     try {
-      const db = await initDB();
-      const savedHandle = await db.get(STORE_NAME, 'directoryHandle');
-      
-      if (savedHandle) {
-        // Verificar se ainda temos permissão
-        const permission = await savedHandle.queryPermission({ mode: 'read' });
-        if (permission === 'granted') {
-          setDirectoryHandle(savedHandle);
-          await loadTracksFromDirectory(savedHandle);
-        } else {
-          // Tentar solicitar permissão novamente
-          const newPermission = await savedHandle.requestPermission({ mode: 'read' });
-          if (newPermission === 'granted') {
-            setDirectoryHandle(savedHandle);
-            await loadTracksFromDirectory(savedHandle);
-          }
-        }
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const data = JSON.parse(saved);
+        // Recriar URLs dos blobs
+        const restoredPlaylists = data.map((playlist: any) => ({
+          ...playlist,
+          tracks: playlist.tracks.map((track: any) => ({
+            ...track,
+            url: track.url, // URLs já são strings no localStorage
+          })),
+        }));
+        setPlaylists(restoredPlaylists);
       }
     } catch (error) {
-      console.error('Erro ao carregar biblioteca salva:', error);
-    } finally {
-      setIsLoading(false);
+      console.error('Erro ao carregar biblioteca:', error);
+    }
+  }, []);
+
+  // Salvar biblioteca no localStorage
+  const saveLibrary = useCallback((newPlaylists: Playlist[]) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newPlaylists));
+    } catch (error) {
+      console.error('Erro ao salvar biblioteca:', error);
     }
   }, []);
 
@@ -104,53 +99,18 @@ export const useMusicLibrary = () => {
     });
   };
 
-  // Carregar músicas de um diretório
-  const loadTracksFromDirectory = async (handle: FileSystemDirectoryHandle) => {
+  // Adicionar músicas a uma playlist
+  const addTracksToPlaylist = async (playlistName: string, files: FileList) => {
     try {
-      const musicFiles: MusicTrack[] = [];
-      
-      // @ts-ignore - values() existe mas pode não estar nos types
-      for await (const entry of handle.values()) {
-        if (entry.kind === 'file') {
-          const file = await (entry as FileSystemFileHandle).getFile();
-          if (/\.(mp3|m4a|ogg|wav|flac)$/i.test(file.name)) {
-            const metadata = await extractMetadata(file);
-            musicFiles.push({
-              file,
-              name: file.name,
-              url: URL.createObjectURL(file),
-              title: metadata.title || file.name,
-              artist: metadata.artist || 'Artista Desconhecido',
-              album: metadata.album || 'Álbum Desconhecido',
-              artwork: metadata.artwork,
-            });
-          }
-        }
-      }
-
-      if (musicFiles.length === 0) {
-        toast.error('Nenhum arquivo de áudio encontrado nesta pasta');
-        return;
-      }
-
-      setTracks(musicFiles);
-      toast.success(`${musicFiles.length} músicas carregadas da biblioteca`);
-    } catch (error) {
-      console.error('Erro ao carregar músicas:', error);
-      toast.error('Erro ao carregar biblioteca de músicas');
-    }
-  };
-
-  // Carregar músicas usando input tradicional (fallback)
-  const loadTracksFromFiles = async (files: FileList) => {
-    try {
-      const musicFiles: MusicTrack[] = [];
+      setIsLoading(true);
+      const newTracks: MusicTrack[] = [];
       
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         if (/\.(mp3|m4a|ogg|wav|flac)$/i.test(file.name)) {
           const metadata = await extractMetadata(file);
-          musicFiles.push({
+          const track: MusicTrack = {
+            id: `${Date.now()}-${i}`,
             file,
             name: file.name,
             url: URL.createObjectURL(file),
@@ -158,111 +118,119 @@ export const useMusicLibrary = () => {
             artist: metadata.artist || 'Artista Desconhecido',
             album: metadata.album || 'Álbum Desconhecido',
             artwork: metadata.artwork,
-          });
+            playlist: playlistName,
+          };
+          newTracks.push(track);
         }
       }
 
-      if (musicFiles.length === 0) {
+      if (newTracks.length === 0) {
         toast.error('Nenhum arquivo de áudio encontrado');
         return;
       }
 
-      setTracks(musicFiles);
-      toast.success(`${musicFiles.length} músicas carregadas`);
-    } catch (error) {
-      console.error('Erro ao carregar músicas:', error);
-      toast.error('Erro ao carregar arquivos de áudio');
-    }
-  };
-
-  // Conectar nova biblioteca
-  const connectLibrary = async () => {
-    try {
-      // Verificar se estamos em um iframe cross-origin (onde File System Access API não funciona)
-      const isInIframe = window.self !== window.top;
-      
-      // @ts-ignore - showDirectoryPicker existe mas não está nos types padrão
-      const hasFileSystemAccess = 'showDirectoryPicker' in window;
-
-      // Se não está em iframe e tem suporte, tenta usar File System Access API
-      if (!isInIframe && hasFileSystemAccess) {
-        try {
-          // @ts-ignore
-          const handle = await window.showDirectoryPicker({
-            mode: 'read',
-          });
-
-          // Salvar handle no IndexedDB
-          const db = await initDB();
-          await db.put(STORE_NAME, handle, 'directoryHandle');
-
-          setDirectoryHandle(handle);
-          await loadTracksFromDirectory(handle);
-          return;
-        } catch (fsError: any) {
-          // Se falhar (ex: SecurityError em iframe), cai no fallback abaixo
-          if (fsError.name === 'AbortError') {
-            return; // Usuário cancelou
-          }
-          console.warn('File System Access API falhou, usando fallback:', fsError);
+      setPlaylists(prev => {
+        const existingPlaylist = prev.find(p => p.id === playlistName);
+        let updated: Playlist[];
+        
+        if (existingPlaylist) {
+          updated = prev.map(p =>
+            p.id === playlistName
+              ? { ...p, tracks: [...p.tracks, ...newTracks] }
+              : p
+          );
+        } else {
+          updated = [
+            ...prev,
+            {
+              id: playlistName,
+              name: playlistName,
+              tracks: newTracks,
+            },
+          ];
         }
-      }
+        
+        saveLibrary(updated);
+        return updated;
+      });
 
-      // Fallback: usar input file tradicional
-      const input = document.createElement('input');
-      input.type = 'file';
-      // @ts-ignore - webkitdirectory é suportado mas não está nos types
-      input.webkitdirectory = true;
-      input.multiple = true;
-      input.accept = 'audio/*';
-      
-      input.onchange = async (e: Event) => {
-        const target = e.target as HTMLInputElement;
-        if (target.files && target.files.length > 0) {
-          await loadTracksFromFiles(target.files);
-        }
-      };
-      
-      input.click();
-    } catch (error: any) {
-      if (error.name !== 'AbortError') {
-        console.error('Erro ao conectar biblioteca:', error);
-        toast.error('Erro ao conectar biblioteca de músicas');
-      }
-    }
-  };
-
-  // Desconectar biblioteca
-  const disconnectLibrary = async () => {
-    try {
-      const db = await initDB();
-      await db.delete(STORE_NAME, 'directoryHandle');
-      setDirectoryHandle(null);
-      setTracks([]);
-      toast.info('Biblioteca desconectada');
+      toast.success(`${newTracks.length} música(s) adicionada(s) à playlist "${playlistName}"`);
     } catch (error) {
-      console.error('Erro ao desconectar biblioteca:', error);
+      console.error('Erro ao adicionar músicas:', error);
+      toast.error('Erro ao adicionar músicas');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Recarregar biblioteca
-  const reloadLibrary = async () => {
-    if (directoryHandle) {
-      await loadTracksFromDirectory(directoryHandle);
-    }
+  // Criar nova playlist
+  const createPlaylist = (name: string) => {
+    const newPlaylist: Playlist = {
+      id: name.toLowerCase().replace(/\s+/g, '-'),
+      name,
+      tracks: [],
+    };
+    
+    setPlaylists(prev => {
+      const updated = [...prev, newPlaylist];
+      saveLibrary(updated);
+      return updated;
+    });
+    
+    toast.success(`Playlist "${name}" criada`);
+    return newPlaylist.id;
+  };
+
+  // Remover música de uma playlist
+  const removeTrack = (playlistId: string, trackId: string) => {
+    setPlaylists(prev => {
+      const updated = prev.map(p =>
+        p.id === playlistId
+          ? { ...p, tracks: p.tracks.filter(t => t.id !== trackId) }
+          : p
+      );
+      saveLibrary(updated);
+      return updated;
+    });
+    toast.success('Música removida');
+  };
+
+  // Remover playlist
+  const removePlaylist = (playlistId: string) => {
+    setPlaylists(prev => {
+      const updated = prev.filter(p => p.id !== playlistId);
+      saveLibrary(updated);
+      return updated;
+    });
+    toast.success('Playlist removida');
+  };
+
+  // Limpar toda a biblioteca
+  const clearLibrary = () => {
+    setPlaylists([]);
+    localStorage.removeItem(STORAGE_KEY);
+    toast.info('Biblioteca limpa');
+  };
+
+  // Obter todas as músicas de todas as playlists
+  const getAllTracks = (): MusicTrack[] => {
+    return playlists.flatMap(p => p.tracks);
   };
 
   // Carregar biblioteca salva na inicialização
   useEffect(() => {
-    loadSavedDirectory();
-  }, [loadSavedDirectory]);
+    loadSavedLibrary();
+  }, [loadSavedLibrary]);
 
   return {
-    tracks,
+    playlists,
     isLoading,
-    isConnected: directoryHandle !== null || tracks.length > 0,
-    connectLibrary,
-    disconnectLibrary,
-    reloadLibrary,
+    isConnected: playlists.length > 0,
+    addTracksToPlaylist,
+    createPlaylist,
+    removeTrack,
+    removePlaylist,
+    clearLibrary,
+    getAllTracks,
   };
 };

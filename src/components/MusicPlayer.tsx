@@ -1,275 +1,303 @@
-import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Slider } from '@/components/ui/slider';
-import { 
-  Play, 
-  Pause, 
-  SkipBack, 
-  SkipForward, 
-  Volume2, 
-  Shuffle, 
-  Repeat,
-  Music,
-  FolderOpen,
-  RefreshCw,
-  XCircle
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Music, Plus, Trash2, Upload, Folder } from 'lucide-react';
+import { Button } from './ui/button';
 import { useMusicLibrary } from '@/hooks/useMusicLibrary';
-import { useMusicPlayer } from '@/contexts/MusicPlayerContext';
+import { useState } from 'react';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from './ui/dialog';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { ScrollArea } from './ui/scroll-area';
 
 export const MusicPlayer = () => {
-  const { tracks, isLoading, isConnected, connectLibrary, disconnectLibrary, reloadLibrary } = useMusicLibrary();
-  const { 
-    currentTrack, 
-    isPlaying, 
-    currentTime, 
-    duration,
-    volume,
-    shuffle,
-    repeat,
-    togglePlayPause,
-    playTrack,
-    playNext,
-    playPrevious,
-    seek,
-    setVolume,
-    setShuffle,
-    setRepeat,
-    setPlaylist
-  } = useMusicPlayer();
+  const {
+    playlists,
+    isLoading,
+    isConnected,
+    addTracksToPlaylist,
+    createPlaylist,
+    removeTrack,
+    removePlaylist,
+    clearLibrary,
+  } = useMusicLibrary();
 
-  // Atualizar playlist no contexto quando tracks mudam
-  useEffect(() => {
-    if (tracks.length > 0) {
-      setPlaylist(tracks);
-      if (!currentTrack) {
-        playTrack(tracks[0]);
-      }
+  const [newPlaylistName, setNewPlaylistName] = useState('');
+  const [selectedPlaylist, setSelectedPlaylist] = useState<string>('');
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
+  const handleCreatePlaylist = () => {
+    if (newPlaylistName.trim()) {
+      const playlistId = createPlaylist(newPlaylistName.trim());
+      setNewPlaylistName('');
+      setIsCreateDialogOpen(false);
+      setSelectedPlaylist(playlistId);
     }
-  }, [tracks]);
-
-  // Formatar tempo
-  const formatTime = (seconds: number) => {
-    if (!isFinite(seconds)) return '0:00';
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Carregando
+  const handleAddTracks = (playlistId: string, event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      addTracksToPlaylist(playlistId, files);
+    }
+  };
+
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
-        <Music className="h-24 w-24 text-muted-foreground/20 mb-6 animate-pulse" />
-        <h2 className="text-2xl font-bold mb-3">Carregando Biblioteca...</h2>
-        <p className="text-muted-foreground">Aguarde enquanto verificamos sua biblioteca de músicas</p>
+      <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
+        <div className="text-center">
+          <Music className="h-16 w-16 animate-pulse text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Processando músicas...</p>
+        </div>
       </div>
     );
   }
 
-  // Estado inicial - sem biblioteca conectada
   if (!isConnected) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
-        <Music className="h-24 w-24 text-muted-foreground/20 mb-6" />
-        <h2 className="text-2xl font-bold mb-3">Player de Música Persistente</h2>
-        <p className="text-muted-foreground mb-2 max-w-md">
-          Selecione a pasta com seus arquivos de música para começar a ouvir.
-        </p>
-        <p className="text-sm text-muted-foreground mb-6 max-w-md">
-          Suporta MP3, M4A, OGG, WAV e FLAC. Lê automaticamente as informações das músicas (artista, álbum, capa).
-        </p>
-        <Button 
-          size="lg" 
-          onClick={connectLibrary}
-          className="gap-2"
-        >
-          <FolderOpen className="h-5 w-5" />
-          Conectar Biblioteca de Músicas
-        </Button>
+      <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
+        <div className="text-center max-w-2xl px-4">
+          <Music className="h-24 w-24 text-muted-foreground/20 mb-6 mx-auto" />
+          <h2 className="text-2xl font-bold mb-3">Biblioteca de Músicas</h2>
+          <p className="text-muted-foreground mb-2 max-w-md mx-auto">
+            Organize suas músicas em playlists personalizadas.
+          </p>
+          <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
+            Suporta MP3, M4A, OGG, WAV e FLAC. Lê automaticamente os metadados (artista, álbum, capa).
+          </p>
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="lg" className="gap-2">
+                <Plus className="h-5 w-5" />
+                Criar Primeira Playlist
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Nova Playlist</DialogTitle>
+                <DialogDescription>
+                  Escolha um nome para sua playlist
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="playlist-name">Nome da Playlist</Label>
+                  <Input
+                    id="playlist-name"
+                    value={newPlaylistName}
+                    onChange={(e) => setNewPlaylistName(e.target.value)}
+                    placeholder="Ex: Rock, Estudos, Treino..."
+                    onKeyDown={(e) => e.key === 'Enter' && handleCreatePlaylist()}
+                  />
+                </div>
+                <Button onClick={handleCreatePlaylist} className="w-full">
+                  Criar Playlist
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
     );
   }
 
-  // Estado ativo - com biblioteca conectada
-  return (
-    <div className="flex flex-col h-full">
-      {/* Área "Tocando Agora" com Arte do Álbum */}
-      <Card className="p-6 mb-4">
-        <div className="flex items-center gap-4">
-          <div className="h-20 w-20 bg-primary/10 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
-            {currentTrack?.artwork ? (
-              <img 
-                src={currentTrack.artwork} 
-                alt={currentTrack.album}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <Music className="h-10 w-10 text-primary" />
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-muted-foreground mb-1">Tocando Agora</p>
-            <h3 className="text-lg font-semibold truncate">
-              {currentTrack?.title || 'Nenhuma música'}
-            </h3>
-            <p className="text-sm text-muted-foreground truncate">
-              {currentTrack?.artist} • {currentTrack?.album}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={reloadLibrary}
-              title="Recarregar biblioteca"
-            >
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={disconnectLibrary}
-              title="Desconectar biblioteca"
-            >
-              <XCircle className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </Card>
+  const currentPlaylist = selectedPlaylist
+    ? playlists.find(p => p.id === selectedPlaylist)
+    : playlists[0];
 
-      {/* Lista de Reprodução */}
-      <Card className="flex-1 overflow-hidden mb-4">
-        <div className="p-4 border-b">
-          <h3 className="font-semibold">Playlist ({tracks.length} músicas)</h3>
-        </div>
-        <div className="overflow-y-auto max-h-[calc(100vh-450px)]">
-          {tracks.map((track, index) => (
-            <button
-              key={index}
-              onClick={() => playTrack(track)}
-              className={cn(
-                "w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors border-b border-border/50 flex items-center gap-3",
-                currentTrack?.url === track.url && "bg-primary/10 hover:bg-primary/15"
-              )}
-            >
-              <div className="h-12 w-12 bg-muted rounded flex items-center justify-center overflow-hidden flex-shrink-0">
-                {track.artwork ? (
-                  <img 
-                    src={track.artwork} 
-                    alt={track.album}
-                    className="h-full w-full object-cover"
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">🎵 Biblioteca de Músicas</h1>
+        <div className="flex gap-2">
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Plus className="h-4 w-4" />
+                Nova Playlist
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Nova Playlist</DialogTitle>
+                <DialogDescription>
+                  Escolha um nome para sua playlist
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="playlist-name">Nome da Playlist</Label>
+                  <Input
+                    id="playlist-name"
+                    value={newPlaylistName}
+                    onChange={(e) => setNewPlaylistName(e.target.value)}
+                    placeholder="Ex: Rock, Estudos, Treino..."
+                    onKeyDown={(e) => e.key === 'Enter' && handleCreatePlaylist()}
                   />
-                ) : (
-                  <Music className="h-5 w-5 text-muted-foreground" />
-                )}
+                </div>
+                <Button onClick={handleCreatePlaylist} className="w-full">
+                  Criar Playlist
+                </Button>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className={cn(
-                  "font-medium truncate",
-                  currentTrack?.url === track.url && "text-primary"
-                )}>
-                  {track.title}
-                </p>
-                <p className="text-sm text-muted-foreground truncate">
-                  {track.artist}
-                </p>
+            </DialogContent>
+          </Dialog>
+          {playlists.length > 0 && (
+            <Button onClick={clearLibrary} variant="outline" size="sm" className="gap-2">
+              <Trash2 className="h-4 w-4" />
+              Limpar Tudo
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-[250px_1fr]">
+        {/* Sidebar com Playlists */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Playlists</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <ScrollArea className="h-[calc(100vh-16rem)]">
+              <div className="space-y-1 p-4 pt-0">
+                {playlists.map((playlist) => (
+                  <button
+                    key={playlist.id}
+                    onClick={() => setSelectedPlaylist(playlist.id)}
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center gap-2 ${
+                      selectedPlaylist === playlist.id || (!selectedPlaylist && playlist === playlists[0])
+                        ? 'bg-primary text-primary-foreground'
+                        : 'hover:bg-muted'
+                    }`}
+                  >
+                    <Folder className="h-4 w-4" />
+                    <span className="flex-1 truncate">{playlist.name}</span>
+                    <span className="text-xs opacity-70">{playlist.tracks.length}</span>
+                  </button>
+                ))}
               </div>
-              {currentTrack?.url === track.url && (
-                <div className="flex-shrink-0">
-                  {isPlaying ? (
-                    <Pause className="h-4 w-4 text-primary" />
-                  ) : (
-                    <Play className="h-4 w-4 text-primary" />
-                  )}
+            </ScrollArea>
+          </CardContent>
+        </Card>
+
+        {/* Área Principal - Músicas da Playlist */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>
+                {currentPlaylist?.name || 'Selecione uma Playlist'}
+              </CardTitle>
+              {currentPlaylist && (
+                <div className="flex gap-2">
+                  <Label htmlFor={`upload-${currentPlaylist.id}`} className="cursor-pointer">
+                    <Button variant="outline" size="sm" className="gap-2" asChild>
+                      <span>
+                        <Upload className="h-4 w-4" />
+                        Adicionar Músicas
+                      </span>
+                    </Button>
+                    <Input
+                      id={`upload-${currentPlaylist.id}`}
+                      type="file"
+                      accept="audio/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => handleAddTracks(currentPlaylist.id, e)}
+                    />
+                  </Label>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => removePlaylist(currentPlaylist.id)}
+                    className="gap-2"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Excluir Playlist
+                  </Button>
                 </div>
               )}
-            </button>
-          ))}
-        </div>
-      </Card>
-
-      {/* Controles de Reprodução */}
-      <Card className="p-6">
-        {/* Barra de Progresso */}
-        <div className="mb-4">
-          <Slider
-            value={[currentTime]}
-            max={duration || 100}
-            step={1}
-            onValueChange={(val) => seek(val[0])}
-            className="mb-2"
-          />
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(duration)}</span>
-          </div>
-        </div>
-
-        {/* Controles Principais */}
-        <div className="flex items-center justify-center gap-4 mb-4">
-          <Button
-            variant={shuffle ? "default" : "outline"}
-            size="icon"
-            onClick={() => setShuffle(!shuffle)}
-          >
-            <Shuffle className="h-4 w-4" />
-          </Button>
-
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={playPrevious}
-          >
-            <SkipBack className="h-5 w-5" />
-          </Button>
-
-          <Button
-            size="lg"
-            onClick={togglePlayPause}
-            className="h-12 w-12"
-          >
-            {isPlaying ? (
-              <Pause className="h-6 w-6" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            {currentPlaylist && currentPlaylist.tracks.length > 0 ? (
+              <ScrollArea className="h-[calc(100vh-16rem)]">
+                <div className="space-y-2">
+                  {currentPlaylist.tracks.map((track) => (
+                    <div
+                      key={track.id}
+                      className="flex items-center gap-4 p-3 rounded-lg border hover:bg-muted/50 transition-colors group"
+                    >
+                      {track.artwork ? (
+                        <img
+                          src={track.artwork}
+                          alt={track.title}
+                          className="w-12 h-12 rounded object-cover"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded bg-muted flex items-center justify-center">
+                          <Music className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{track.title}</p>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {track.artist} • {track.album}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeTrack(currentPlaylist.id, track.id)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
             ) : (
-              <Play className="h-6 w-6 ml-0.5" />
+              <div className="text-center py-12 text-muted-foreground">
+                <Music className="h-16 w-16 mx-auto mb-4 opacity-20" />
+                <p>Nenhuma música nesta playlist</p>
+                {currentPlaylist && (
+                  <Label htmlFor={`upload-${currentPlaylist.id}-empty`} className="cursor-pointer">
+                    <Button variant="outline" size="sm" className="gap-2 mt-4" asChild>
+                      <span>
+                        <Upload className="h-4 w-4" />
+                        Adicionar Músicas
+                      </span>
+                    </Button>
+                    <Input
+                      id={`upload-${currentPlaylist.id}-empty`}
+                      type="file"
+                      accept="audio/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => handleAddTracks(currentPlaylist.id, e)}
+                    />
+                  </Label>
+                )}
+              </div>
             )}
-          </Button>
+          </CardContent>
+        </Card>
+      </div>
 
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={playNext}
-          >
-            <SkipForward className="h-5 w-5" />
-          </Button>
-
-          <Button
-            variant={repeat ? "default" : "outline"}
-            size="icon"
-            onClick={() => setRepeat(!repeat)}
-          >
-            <Repeat className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {/* Controle de Volume */}
-        <div className="flex items-center gap-3">
-          <Volume2 className="h-4 w-4 text-muted-foreground" />
-          <Slider
-            value={[volume]}
-            max={1}
-            step={0.01}
-            onValueChange={(val) => setVolume(val[0])}
-            className="flex-1"
-          />
-          <span className="text-xs text-muted-foreground w-12 text-right">
-            {Math.round(volume * 100)}%
-          </span>
-        </div>
-      </Card>
+      <div className="bg-card rounded-lg border p-6">
+        <p className="text-muted-foreground text-center">
+          Total: {playlists.reduce((acc, p) => acc + p.tracks.length, 0)} música
+          {playlists.reduce((acc, p) => acc + p.tracks.length, 0) !== 1 ? 's' : ''} em{' '}
+          {playlists.length} playlist{playlists.length !== 1 ? 's' : ''}
+        </p>
+        <p className="text-sm text-muted-foreground text-center mt-2">
+          Use o mini-player no topo da página para controlar a reprodução
+        </p>
+      </div>
     </div>
   );
 };

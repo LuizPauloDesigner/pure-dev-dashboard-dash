@@ -13,8 +13,12 @@ import {
 import { cn } from '@/lib/utils';
 import { useMusicPlayer } from '@/contexts/MusicPlayerContext';
 import { useApp } from '@/contexts/AppContext';
+import { useMusicLibrary } from '@/hooks/useMusicLibrary';
 
 export const MusicPlayerBar = () => {
+  const { getAllTracks } = useMusicLibrary();
+  const tracks = getAllTracks();
+  
   const { 
     currentTrack, 
     isPlaying, 
@@ -23,7 +27,8 @@ export const MusicPlayerBar = () => {
     togglePlayPause,
     playNext,
     playPrevious,
-    seek
+    seek,
+    setPlaylist
   } = useMusicPlayer();
   
   const { setCurrentTab } = useApp();
@@ -31,6 +36,13 @@ export const MusicPlayerBar = () => {
     const saved = localStorage.getItem('mini-player-visible');
     return saved !== 'false';
   });
+
+  // Atualizar playlist quando tracks mudarem
+  useEffect(() => {
+    if (tracks.length > 0) {
+      setPlaylist(tracks);
+    }
+  }, [tracks, setPlaylist]);
 
   useEffect(() => {
     localStorage.setItem('mini-player-visible', String(isVisible));
