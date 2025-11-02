@@ -76,11 +76,10 @@ export const MusicPlayer = () => {
         <Music className="h-24 w-24 text-muted-foreground/20 mb-6" />
         <h2 className="text-2xl font-bold mb-3">Player de Música Persistente</h2>
         <p className="text-muted-foreground mb-2 max-w-md">
-          Conecte sua biblioteca de músicas uma única vez e ela ficará disponível automaticamente.
+          Selecione a pasta com seus arquivos de música para começar a ouvir.
         </p>
         <p className="text-sm text-muted-foreground mb-6 max-w-md">
-          ✨ <strong>Novo:</strong> Usa File System Access API para lembrar sua pasta de músicas 
-          mesmo após recarregar a página.
+          Suporta MP3, M4A, OGG, WAV e FLAC. Lê automaticamente as informações das músicas (artista, álbum, capa).
         </p>
         <Button 
           size="lg" 
