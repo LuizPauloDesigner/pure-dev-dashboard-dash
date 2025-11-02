@@ -1,295 +1,168 @@
-import { useState, useRef, useEffect } from 'react';
-import { useApp } from '@/contexts/AppContext';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Play, Pause, SkipBack, SkipForward, Volume2, Shuffle, Repeat, Music, FolderOpen } from 'lucide-react';
-import { toast } from 'sonner';
-
-interface MusicFile {
-  file: File;
-  name: string;
-  url: string;
-}
+import { 
+  Play, 
+  Pause, 
+  SkipBack, 
+  SkipForward,
+  Music,
+  ChevronDown,
+  ChevronUp
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useMusicPlayer } from '@/contexts/MusicPlayerContext';
+import { useApp } from '@/contexts/AppContext';
 
 export const MusicPlayerBar = () => {
-  const { state, setMusicPlayerVolume, setMusicPlayerShuffle, setMusicPlayerRepeat } = useApp();
-  const [playlist, setPlaylist] = useState<MusicFile[]>([]);
-  const [currentTrack, setCurrentTrack] = useState<number>(-1);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [playlistDialogOpen, setPlaylistDialogOpen] = useState(false);
+  const { 
+    currentTrack, 
+    isPlaying, 
+    currentTime, 
+    duration,
+    togglePlayPause,
+    playNext,
+    playPrevious,
+    seek
+  } = useMusicPlayer();
   
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { setCurrentTab } = useApp();
+  const [isVisible, setIsVisible] = useState(() => {
+    const saved = localStorage.getItem('mini-player-visible');
+    return saved !== 'false';
+  });
 
-  // Atualizar volume quando muda no estado
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = state.musicPlayerVolume;
-    }
-  }, [state.musicPlayerVolume]);
-
-  const handleFolderSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const audioFiles = files.filter(file => 
-      /\.(mp3|m4a|ogg|wav|flac)$/i.test(file.name)
-    );
-    
-    if (audioFiles.length === 0) {
-      toast.error('Nenhum arquivo de áudio encontrado');
-      return;
-    }
-
-    const musicFiles: MusicFile[] = audioFiles.map(file => ({
-      file,
-      name: file.name.replace(/\.[^/.]+$/, ''),
-      url: URL.createObjectURL(file)
-    }));
-    
-    setPlaylist(musicFiles);
-    setCurrentTrack(0);
-    
-    // Carregar primeira música
-    if (audioRef.current && musicFiles.length > 0) {
-      audioRef.current.src = musicFiles[0].url;
-      audioRef.current.volume = state.musicPlayerVolume;
-    }
-    
-    toast.success(`${audioFiles.length} músicas carregadas`);
-  };
-
-  const playTrack = (index: number) => {
-    if (!audioRef.current || index < 0 || index >= playlist.length) return;
-    
-    const musicFile = playlist[index];
-    audioRef.current.src = musicFile.url;
-    audioRef.current.play()
-      .then(() => {
-        setCurrentTrack(index);
-        setIsPlaying(true);
-      })
-      .catch(error => {
-        console.error('Erro ao tocar música:', error);
-        toast.error('Erro ao tocar música');
-      });
-  };
-
-  const handlePlayPause = () => {
-    if (!audioRef.current) return;
-    
-    if (currentTrack === -1 && playlist.length > 0) {
-      playTrack(0);
-    } else if (isPlaying) {
-      audioRef.current.pause();
-      setIsPlaying(false);
-    } else {
-      audioRef.current.play()
-        .then(() => setIsPlaying(true))
-        .catch(error => {
-          console.error('Erro ao tocar:', error);
-          toast.error('Erro ao reproduzir');
-        });
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentTrack > 0) {
-      playTrack(currentTrack - 1);
-    } else if (playlist.length > 0) {
-      playTrack(playlist.length - 1);
-    }
-  };
-
-  const handleNext = () => {
-    if (state.musicPlayerShuffle) {
-      const randomIndex = Math.floor(Math.random() * playlist.length);
-      playTrack(randomIndex);
-    } else if (currentTrack < playlist.length - 1) {
-      playTrack(currentTrack + 1);
-    } else if (state.musicPlayerRepeat) {
-      playTrack(0);
-    }
-  };
-
-  const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
-    }
-  };
-
-  const handleLoadedMetadata = () => {
-    if (audioRef.current) {
-      setDuration(audioRef.current.duration);
-    }
-  };
-
-  const handleEnded = () => {
-    if (state.musicPlayerRepeat) {
-      playTrack(currentTrack);
-    } else {
-      handleNext();
-    }
-  };
-
-  const handleSeek = (value: number[]) => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = value[0];
-      setCurrentTime(value[0]);
-    }
-  };
+    localStorage.setItem('mini-player-visible', String(isVisible));
+  }, [isVisible]);
 
   const formatTime = (seconds: number) => {
-    if (isNaN(seconds)) return '0:00';
+    if (!isFinite(seconds)) return '0:00';
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const currentTrackName = currentTrack >= 0 && playlist[currentTrack] 
-    ? playlist[currentTrack].name
-    : 'Nenhuma música selecionada';
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
-  if (playlist.length === 0) {
+  if (!isVisible) {
     return (
-      <div className="sticky top-16 z-40 w-full border-b bg-card/95 backdrop-blur">
-        <div className="container flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-3">
-            <Music className="h-5 w-5 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Player de Música</span>
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            // @ts-ignore - webkitdirectory é suportado mas não está nos tipos
-            webkitdirectory=""
-            directory=""
-            multiple
-            onChange={handleFolderSelect}
-            className="hidden"
-            accept="audio/*"
-          />
-          <Button size="sm" onClick={() => fileInputRef.current?.click()}>
-            <FolderOpen className="w-4 h-4 mr-2" />
-            Selecionar Pasta
-          </Button>
-        </div>
+      <div className="fixed top-0 left-0 right-0 z-[60] bg-[#1a1a1a] border-b border-primary/20 h-[25px]">
+        <button
+          onClick={() => setIsVisible(true)}
+          className="w-full h-full py-1 text-xs text-muted-foreground hover:text-primary transition-colors flex items-center justify-center gap-1"
+        >
+          <ChevronDown className="h-3 w-3" />
+          Mostrar Player
+        </button>
       </div>
     );
   }
 
   return (
-    <>
-      <audio
-        ref={audioRef}
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
-        onEnded={handleEnded}
-      />
-      
-      <div className="sticky top-16 z-40 w-full border-b bg-card/95 backdrop-blur">
-        <div className="container px-4 py-2">
-          <div className="flex items-center gap-4">
-            {/* Controles principais */}
+    <div className="fixed top-0 left-0 right-0 z-[60] bg-[#1a1a1a] border-b border-primary/20 shadow-lg">
+      <div className="container mx-auto px-4">
+        <div className="flex items-center gap-4 h-[70px]">
+          {/* Album Art & Track Info */}
+          <button
+            onClick={() => setCurrentTab('musica')}
+            className="flex items-center gap-3 min-w-0 hover:opacity-80 transition-opacity"
+          >
+            <div className="h-12 w-12 bg-primary/10 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
+              {currentTrack?.artwork ? (
+                <img 
+                  src={currentTrack.artwork} 
+                  alt={currentTrack.album}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <Music className="h-6 w-6 text-primary" />
+              )}
+            </div>
+            <div className="min-w-0 text-left">
+              <p className="text-sm font-semibold text-foreground truncate max-w-[200px]">
+                {currentTrack?.title || 'Nenhuma música'}
+              </p>
+              <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                {currentTrack?.artist || 'Selecione uma música'}
+              </p>
+            </div>
+          </button>
+
+          {/* Controls */}
+          <div className="flex-1 flex flex-col items-center gap-2 max-w-2xl mx-auto">
             <div className="flex items-center gap-2">
-              <Button size="icon" variant="ghost" onClick={handlePrevious}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={playPrevious}
+                className="h-8 w-8 hover:bg-primary/10"
+              >
                 <SkipBack className="h-4 w-4" />
               </Button>
-              <Button size="icon" onClick={handlePlayPause}>
-                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+
+              <Button
+                size="icon"
+                onClick={togglePlayPause}
+                className="h-10 w-10 bg-primary hover:bg-primary/90"
+              >
+                {isPlaying ? (
+                  <Pause className="h-5 w-5" />
+                ) : (
+                  <Play className="h-5 w-5 ml-0.5" />
+                )}
               </Button>
-              <Button size="icon" variant="ghost" onClick={handleNext}>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={playNext}
+                className="h-8 w-8 hover:bg-primary/10"
+              >
                 <SkipForward className="h-4 w-4" />
               </Button>
             </div>
 
-            {/* Informação da música e barra de progresso */}
-            <div className="flex-1 flex flex-col gap-1 min-w-0">
-              <div className="flex items-center justify-between text-sm">
-                <span className="truncate font-medium">{currentTrackName}</span>
-                <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
-                  {formatTime(currentTime)} / {formatTime(duration)}
-                </span>
-              </div>
-              <Slider
-                value={[currentTime]}
-                max={duration || 100}
-                step={0.1}
-                onValueChange={handleSeek}
-                className="cursor-pointer"
-              />
-            </div>
-
-            {/* Controles secundários */}
-            <div className="flex items-center gap-2">
-              <Button
-                size="icon"
-                variant={state.musicPlayerShuffle ? "default" : "ghost"}
-                onClick={() => setMusicPlayerShuffle(!state.musicPlayerShuffle)}
-              >
-                <Shuffle className="h-4 w-4" />
-              </Button>
-              <Button
-                size="icon"
-                variant={state.musicPlayerRepeat ? "default" : "ghost"}
-                onClick={() => setMusicPlayerRepeat(!state.musicPlayerRepeat)}
-              >
-                <Repeat className="h-4 w-4" />
-              </Button>
-              
-              <div className="flex items-center gap-2 w-32">
-                <Volume2 className="h-4 w-4" />
+            {/* Progress Bar */}
+            <div className="w-full flex items-center gap-2">
+              <span className="text-xs text-muted-foreground w-10 text-right">
+                {formatTime(currentTime)}
+              </span>
+              <div className="flex-1 relative group">
+                <div className="h-1 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-primary transition-all duration-300"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
                 <Slider
-                  value={[state.musicPlayerVolume * 100]}
-                  max={100}
+                  value={[currentTime]}
+                  max={duration || 100}
                   step={1}
-                  onValueChange={(value) => setMusicPlayerVolume(value[0] / 100)}
-                  className="cursor-pointer"
+                  onValueChange={(val) => seek(val[0])}
+                  className={cn(
+                    "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity",
+                    "[&_[role=slider]]:h-3 [&_[role=slider]]:w-3"
+                  )}
                 />
               </div>
-
-              <Dialog open={playlistDialogOpen} onOpenChange={setPlaylistDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="icon" variant="outline">
-                    <Music className="h-4 w-4" />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>Playlist ({playlist.length} músicas)</DialogTitle>
-                  </DialogHeader>
-                  <ScrollArea className="h-96">
-                    <div className="space-y-1">
-                      {playlist.map((file, index) => (
-                        <button
-                          key={index}
-                          onClick={() => {
-                            playTrack(index);
-                            setPlaylistDialogOpen(false);
-                          }}
-                          className={`w-full text-left p-3 rounded-lg hover:bg-accent transition-colors ${
-                            currentTrack === index ? 'bg-accent font-medium' : ''
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                           <span className="text-sm text-muted-foreground w-6">{index + 1}</span>
-                            <span className="flex-1 truncate">{file.name}</span>
-                            {currentTrack === index && isPlaying && (
-                              <Play className="h-4 w-4 text-primary" />
-                            )}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </DialogContent>
-              </Dialog>
+              <span className="text-xs text-muted-foreground w-10">
+                {formatTime(duration)}
+              </span>
             </div>
           </div>
+
+          {/* Hide Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsVisible(false)}
+            className="ml-auto h-8 w-8 hover:bg-primary/10"
+          >
+            <ChevronUp className="h-4 w-4" />
+          </Button>
         </div>
       </div>
-    </>
+    </div>
   );
 };

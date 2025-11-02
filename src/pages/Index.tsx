@@ -18,7 +18,10 @@ import { Draft } from '@/components/Draft';
 import { Favorites } from '@/components/Favorites';
 import { Wellness } from '@/components/Wellness';
 import { Settings } from '@/components/Settings';
+import { MusicPlayer } from '@/components/MusicPlayer';
 import { CommandPalette } from '@/components/CommandPalette';
+import { cn } from '@/lib/utils';
+import React from 'react';
 
 const MainContent = () => {
   const { currentTab } = useApp();
@@ -33,11 +36,12 @@ const MainContent = () => {
       {currentTab === 'cheatsheet' && <Cheatsheet />}
       {currentTab === 'kanban' && <Kanban />}
       {currentTab === 'checklists' && <Checklists />}
-        {currentTab === 'passwords' && <Passwords />}
-        {currentTab === 'contacts' && <Contacts />}
-        {currentTab === 'finance' && <Finance />}
+      {currentTab === 'passwords' && <Passwords />}
+      {currentTab === 'contacts' && <Contacts />}
+      {currentTab === 'finance' && <Finance />}
       {currentTab === 'diary' && <Diary />}
       {currentTab === 'wellness' && <Wellness />}
+      {currentTab === 'musica' && <MusicPlayer />}
       {currentTab === 'draft' && <Draft />}
       {currentTab === 'settings' && <Settings />}
     </main>
@@ -45,14 +49,34 @@ const MainContent = () => {
 };
 
 const Index = () => {
+  const [isPlayerVisible, setIsPlayerVisible] = React.useState(() => {
+    const saved = localStorage.getItem('mini-player-visible');
+    return saved !== 'false';
+  });
+
+  React.useEffect(() => {
+    const checkVisibility = () => {
+      const saved = localStorage.getItem('mini-player-visible');
+      setIsPlayerVisible(saved !== 'false');
+    };
+    
+    window.addEventListener('storage', checkVisibility);
+    const interval = setInterval(checkVisibility, 100);
+    
+    return () => {
+      window.removeEventListener('storage', checkVisibility);
+      clearInterval(interval);
+    };
+  }, []);
+
   return (
     <AppProvider>
       <SidebarProvider defaultOpen={true}>
         <div className="min-h-screen flex w-full bg-background">
+          <MusicPlayerBar />
           <AppSidebar />
-          <SidebarInset className="flex-1">
+          <SidebarInset className={cn("flex-1", isPlayerVisible ? "pt-[70px]" : "pt-[25px]")}>
             <Navbar />
-            <MusicPlayerBar />
             <MainContent />
           </SidebarInset>
         </div>

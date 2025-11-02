@@ -39,6 +39,7 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'wellness', label: 'Bem-Estar', icon: Heart },
+  { id: 'musica', label: 'Biblioteca de Músicas', icon: '🎵' },
   { id: 'favorites', label: 'Favoritos', icon: Star },
   { id: 'notes', label: 'Notas', icon: FileText },
   { id: 'prompts', label: 'Prompts IA', icon: Sparkles },

@@ -89,4 +89,9 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Mini Player Adjustments */
+  .mini-player-visible {
+    padding-top: 70px;
+  }
 }
