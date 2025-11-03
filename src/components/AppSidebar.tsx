@@ -27,19 +27,21 @@ import {
   Settings,
   Heart,
   ListChecks,
+  Music,
+  Receipt,
   LucideIcon,
 } from 'lucide-react';
 
 interface MenuItem {
   id: string;
   label: string;
-  icon: LucideIcon | string;
+  icon: LucideIcon;
 }
 
 const menuItems: MenuItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'wellness', label: 'Bem-Estar', icon: Heart },
-  { id: 'musica', label: 'Biblioteca de Músicas', icon: '🎵' },
+  { id: 'musica', label: 'Biblioteca de Músicas', icon: Music },
   { id: 'favorites', label: 'Favoritos', icon: Star },
   { id: 'notes', label: 'Notas', icon: FileText },
   { id: 'prompts', label: 'Prompts IA', icon: Sparkles },
@@ -49,7 +51,7 @@ const menuItems: MenuItem[] = [
   { id: 'checklists', label: 'Listas Pessoais', icon: ListChecks },
   { id: 'passwords', label: 'Senhas', icon: Lock },
   { id: 'contacts', label: 'Contatos', icon: User },
-  { id: 'orcamentos', label: 'Orçamentos', icon: '🧾' },
+  { id: 'orcamentos', label: 'Orçamentos', icon: Receipt },
   { id: 'finance', label: 'Financeiro', icon: DollarSign },
   { id: 'diary', label: 'Diário', icon: Calendar },
   { id: 'draft', label: 'Rascunho', icon: FileEdit },
@@ -72,8 +74,7 @@ export function AppSidebar() {
             <SidebarMenu>
               {menuItems.map((item) => {
                 const isActive = currentTab === item.id;
-                const IconComponent = typeof item.icon !== 'string' ? item.icon : null;
-                const iconString = typeof item.icon === 'string' ? item.icon : null;
+                const Icon = item.icon;
                 
                 return (
                   <SidebarMenuItem key={item.id}>
@@ -88,11 +89,7 @@ export function AppSidebar() {
                       isActive={isActive}
                       tooltip={isCollapsed ? item.label : undefined}
                     >
-                      {IconComponent ? (
-                        <IconComponent className="h-4 w-4" />
-                      ) : (
-                        <span className="text-base mr-2">{iconString}</span>
-                      )}
+                      <Icon className="h-4 w-4" />
                       <span>{item.label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
