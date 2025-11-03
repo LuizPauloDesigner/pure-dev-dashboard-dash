@@ -195,6 +195,44 @@ export interface GamificationStats {
   longBreakDuration: number; // minutos
 }
 
+export interface BillingInfo {
+  companyName: string;
+  address: string;
+  taxId: string;
+  logoUrl: string;
+  email: string;
+  phone: string;
+}
+
+export interface ServiceCatalogItem {
+  id: string;
+  description: string;
+  unitPrice: number;
+  createdAt: string;
+}
+
+export interface BudgetItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
+export interface Budget {
+  id: string;
+  projectId: string;
+  clientId: string;
+  items: BudgetItem[];
+  subtotal: number;
+  discount: number;
+  total: number;
+  terms: string;
+  status: 'draft' | 'sent' | 'approved';
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AppState {
   projects: Project[];
   notes: Note[];
@@ -225,6 +263,10 @@ export interface AppState {
   musicPlayerVolume: number;
   musicPlayerShuffle: boolean;
   musicPlayerRepeat: boolean;
+  billingInfo: BillingInfo;
+  serviceCatalog: ServiceCatalogItem[];
+  budgets: Budget[];
+  encryptedBudgets?: string;
 }
 
 interface AppContextType {
@@ -295,6 +337,13 @@ interface AppContextType {
   addChecklistItem: (checklistId: string, item: Omit<ChecklistItem, 'id'>) => void;
   updateChecklistItem: (checklistId: string, itemId: string, updates: Partial<ChecklistItem>) => void;
   deleteChecklistItem: (checklistId: string, itemId: string) => void;
+  updateBillingInfo: (info: Partial<BillingInfo>) => void;
+  addServiceCatalogItem: (item: Omit<ServiceCatalogItem, 'id' | 'createdAt'>) => void;
+  updateServiceCatalogItem: (id: string, updates: Partial<ServiceCatalogItem>) => void;
+  deleteServiceCatalogItem: (id: string) => void;
+  addBudget: (budget: Omit<Budget, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateBudget: (id: string, updates: Partial<Budget>) => void;
+  deleteBudget: (id: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -344,6 +393,16 @@ const initialState: AppState = {
   musicPlayerVolume: 0.7,
   musicPlayerShuffle: false,
   musicPlayerRepeat: false,
+  billingInfo: {
+    companyName: '',
+    address: '',
+    taxId: '',
+    logoUrl: '',
+    email: '',
+    phone: '',
+  },
+  serviceCatalog: [],
+  budgets: [],
 };
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
@@ -964,6 +1023,70 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
+  // Budget management
+  const updateBillingInfo = (info: Partial<BillingInfo>) => {
+    setState(prev => ({
+      ...prev,
+      billingInfo: { ...prev.billingInfo, ...info }
+    }));
+  };
+
+  const addServiceCatalogItem = (item: Omit<ServiceCatalogItem, 'id' | 'createdAt'>) => {
+    setState(prev => ({
+      ...prev,
+      serviceCatalog: [...prev.serviceCatalog, {
+        ...item,
+        id: Date.now().toString(),
+        createdAt: new Date().toISOString(),
+      }],
+    }));
+  };
+
+  const updateServiceCatalogItem = (id: string, updates: Partial<ServiceCatalogItem>) => {
+    setState(prev => ({
+      ...prev,
+      serviceCatalog: prev.serviceCatalog.map(item =>
+        item.id === id ? { ...item, ...updates } : item
+      ),
+    }));
+  };
+
+  const deleteServiceCatalogItem = (id: string) => {
+    setState(prev => ({
+      ...prev,
+      serviceCatalog: prev.serviceCatalog.filter(item => item.id !== id),
+    }));
+  };
+
+  const addBudget = (budget: Omit<Budget, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    setState(prev => ({
+      ...prev,
+      budgets: [...prev.budgets, {
+        ...budget,
+        id: Date.now().toString(),
+        createdAt: now,
+        updatedAt: now,
+      }],
+    }));
+  };
+
+  const updateBudget = (id: string, updates: Partial<Budget>) => {
+    setState(prev => ({
+      ...prev,
+      budgets: prev.budgets.map(budget =>
+        budget.id === id ? { ...budget, ...updates, updatedAt: new Date().toISOString() } : budget
+      ),
+    }));
+  };
+
+  const deleteBudget = (id: string) => {
+    setState(prev => ({
+      ...prev,
+      budgets: prev.budgets.filter(budget => budget.id !== id),
+    }));
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -1034,6 +1157,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         addChecklistItem,
         updateChecklistItem,
         deleteChecklistItem,
+        updateBillingInfo,
+        addServiceCatalogItem,
+        updateServiceCatalogItem,
+        deleteServiceCatalogItem,
+        addBudget,
+        updateBudget,
+        deleteBudget,
       }}
     >
       {children}

@@ -49,6 +49,7 @@ const menuItems: MenuItem[] = [
   { id: 'checklists', label: 'Listas Pessoais', icon: ListChecks },
   { id: 'passwords', label: 'Senhas', icon: Lock },
   { id: 'contacts', label: 'Contatos', icon: User },
+  { id: 'orcamentos', label: 'Orçamentos', icon: '🧾' },
   { id: 'finance', label: 'Financeiro', icon: DollarSign },
   { id: 'diary', label: 'Diário', icon: Calendar },
   { id: 'draft', label: 'Rascunho', icon: FileEdit },

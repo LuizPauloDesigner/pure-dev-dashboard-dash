@@ -19,6 +19,7 @@ import { Favorites } from '@/components/Favorites';
 import { Wellness } from '@/components/Wellness';
 import { Settings } from '@/components/Settings';
 import { MusicPlayer } from '@/components/MusicPlayer';
+import { Budgets } from '@/components/Budgets';
 import { CommandPalette } from '@/components/CommandPalette';
 import { cn } from '@/lib/utils';
 import React from 'react';
@@ -38,6 +39,7 @@ const MainContent = () => {
       {currentTab === 'checklists' && <Checklists />}
       {currentTab === 'passwords' && <Passwords />}
       {currentTab === 'contacts' && <Contacts />}
+      {currentTab === 'orcamentos' && <Budgets />}
       {currentTab === 'finance' && <Finance />}
       {currentTab === 'diary' && <Diary />}
       {currentTab === 'wellness' && <Wellness />}

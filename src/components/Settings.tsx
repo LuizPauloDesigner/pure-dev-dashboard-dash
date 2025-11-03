@@ -28,6 +28,10 @@ export const Settings = () => {
     deleteFinancialBudget,
     addContactTag,
     deleteContactTag,
+    updateBillingInfo,
+    addServiceCatalogItem,
+    updateServiceCatalogItem,
+    deleteServiceCatalogItem,
   } = useApp();
   const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<string | null>(null);
@@ -49,6 +53,15 @@ export const Settings = () => {
   // Contact tags state
   const [contactTagDialogOpen, setContactTagDialogOpen] = useState(false);
   const [newContactTag, setNewContactTag] = useState('');
+
+  // Billing info state
+  const [isBillingDialogOpen, setIsBillingDialogOpen] = useState(false);
+  const [billingForm, setBillingForm] = useState(state.billingInfo);
+
+  // Service catalog state
+  const [isServiceDialogOpen, setIsServiceDialogOpen] = useState(false);
+  const [editingService, setEditingService] = useState<string | null>(null);
+  const [serviceForm, setServiceForm] = useState({ description: '', unitPrice: '' });
 
   const handleAddProject = () => {
     if (!projectForm.name.trim()) {
@@ -243,6 +256,52 @@ export const Settings = () => {
   const projectAccounts = (state.financialAccounts || []).filter(a => a.projectId === currentProject);
   const projectCategories = (state.financialCategories || []).filter(c => c.projectId === currentProject);
   const projectBudgets = (state.financialBudgets || []).filter(b => b.projectId === currentProject);
+
+  const handleSaveBillingInfo = () => {
+    updateBillingInfo(billingForm);
+    setIsBillingDialogOpen(false);
+    toast.success('Dados de faturamento atualizados');
+  };
+
+  const handleAddService = () => {
+    if (!serviceForm.description.trim()) {
+      toast.error('Descrição é obrigatória');
+      return;
+    }
+
+    const serviceData = {
+      description: serviceForm.description,
+      unitPrice: parseFloat(serviceForm.unitPrice) || 0,
+    };
+
+    if (editingService) {
+      updateServiceCatalogItem(editingService, serviceData);
+      toast.success('Serviço atualizado');
+    } else {
+      addServiceCatalogItem(serviceData);
+      toast.success('Serviço adicionado');
+    }
+
+    setServiceForm({ description: '', unitPrice: '' });
+    setEditingService(null);
+    setIsServiceDialogOpen(false);
+  };
+
+  const handleEditService = (serviceId: string) => {
+    const service = state.serviceCatalog.find(s => s.id === serviceId);
+    if (service) {
+      setServiceForm({ description: service.description, unitPrice: service.unitPrice.toString() });
+      setEditingService(serviceId);
+      setIsServiceDialogOpen(true);
+    }
+  };
+
+  const handleDeleteService = (serviceId: string) => {
+    if (confirm('Deseja deletar este serviço?')) {
+      deleteServiceCatalogItem(serviceId);
+      toast.success('Serviço deletado');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -463,6 +522,191 @@ export const Settings = () => {
               </p>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Billing Info */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Meus Dados de Faturamento</CardTitle>
+            <Dialog open={isBillingDialogOpen} onOpenChange={setIsBillingDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" onClick={() => setBillingForm(state.billingInfo)}>
+                  <Edit2 className="h-4 w-4 mr-2" />
+                  Editar Dados
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Editar Dados de Faturamento</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 pt-4">
+                  <div>
+                    <Label>Nome da Empresa/Pessoa</Label>
+                    <Input
+                      value={billingForm.companyName}
+                      onChange={(e) => setBillingForm({ ...billingForm, companyName: e.target.value })}
+                      placeholder="Ex: João Silva"
+                    />
+                  </div>
+                  <div>
+                    <Label>Endereço</Label>
+                    <Textarea
+                      value={billingForm.address}
+                      onChange={(e) => setBillingForm({ ...billingForm, address: e.target.value })}
+                      placeholder="Endereço completo"
+                      rows={2}
+                    />
+                  </div>
+                  <div>
+                    <Label>CNPJ/CPF</Label>
+                    <Input
+                      value={billingForm.taxId}
+                      onChange={(e) => setBillingForm({ ...billingForm, taxId: e.target.value })}
+                      placeholder="00.000.000/0000-00"
+                    />
+                  </div>
+                  <div>
+                    <Label>E-mail</Label>
+                    <Input
+                      type="email"
+                      value={billingForm.email}
+                      onChange={(e) => setBillingForm({ ...billingForm, email: e.target.value })}
+                      placeholder="contato@empresa.com"
+                    />
+                  </div>
+                  <div>
+                    <Label>Telefone</Label>
+                    <Input
+                      value={billingForm.phone}
+                      onChange={(e) => setBillingForm({ ...billingForm, phone: e.target.value })}
+                      placeholder="(11) 99999-9999"
+                    />
+                  </div>
+                  <div>
+                    <Label>URL da Logo</Label>
+                    <Input
+                      value={billingForm.logoUrl}
+                      onChange={(e) => setBillingForm({ ...billingForm, logoUrl: e.target.value })}
+                      placeholder="https://exemplo.com/logo.png"
+                    />
+                  </div>
+                  <Button onClick={handleSaveBillingInfo} className="w-full">
+                    Salvar Dados
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {state.billingInfo.companyName ? (
+            <>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Empresa:</span>
+                <span className="font-medium">{state.billingInfo.companyName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">CNPJ/CPF:</span>
+                <span className="font-medium">{state.billingInfo.taxId}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">E-mail:</span>
+                <span className="font-medium">{state.billingInfo.email}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Telefone:</span>
+                <span className="font-medium">{state.billingInfo.phone}</span>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Nenhum dado de faturamento cadastrado
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Service Catalog */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Catálogo de Serviços/Itens</CardTitle>
+            <Dialog open={isServiceDialogOpen} onOpenChange={setIsServiceDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" onClick={() => {
+                  setEditingService(null);
+                  setServiceForm({ description: '', unitPrice: '' });
+                }}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Serviço
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{editingService ? 'Editar' : 'Novo'} Serviço</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 pt-4">
+                  <div>
+                    <Label>Descrição</Label>
+                    <Input
+                      value={serviceForm.description}
+                      onChange={(e) => setServiceForm({ ...serviceForm, description: e.target.value })}
+                      placeholder="Ex: Desenvolvimento de website"
+                    />
+                  </div>
+                  <div>
+                    <Label>Preço Unitário (R$)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={serviceForm.unitPrice}
+                      onChange={(e) => setServiceForm({ ...serviceForm, unitPrice: e.target.value })}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <Button onClick={handleAddService} className="w-full">
+                    {editingService ? 'Atualizar' : 'Adicionar'} Serviço
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {state.serviceCatalog.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Nenhum serviço cadastrado
+            </p>
+          ) : (
+            state.serviceCatalog.map(service => (
+              <div key={service.id} className="flex items-center justify-between p-3 rounded-lg border">
+                <div>
+                  <span className="font-medium">{service.description}</span>
+                  <span className="text-sm text-muted-foreground ml-2">
+                    - R$ {service.unitPrice.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => handleEditService(service.id)}
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => handleDeleteService(service.id)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
         </CardContent>
       </Card>
 
