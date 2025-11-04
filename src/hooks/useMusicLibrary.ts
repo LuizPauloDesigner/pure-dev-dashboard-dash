@@ -19,41 +19,9 @@ export interface Playlist {
   tracks: MusicTrack[];
 }
 
-const STORAGE_KEY = 'musicLibrary';
-
 export const useMusicLibrary = () => {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-
-  // Carregar biblioteca do localStorage
-  const loadSavedLibrary = useCallback(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const data = JSON.parse(saved);
-        // Recriar URLs dos blobs
-        const restoredPlaylists = data.map((playlist: any) => ({
-          ...playlist,
-          tracks: playlist.tracks.map((track: any) => ({
-            ...track,
-            url: track.url, // URLs já são strings no localStorage
-          })),
-        }));
-        setPlaylists(restoredPlaylists);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar biblioteca:', error);
-    }
-  }, []);
-
-  // Salvar biblioteca no localStorage
-  const saveLibrary = useCallback((newPlaylists: Playlist[]) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newPlaylists));
-    } catch (error) {
-      console.error('Erro ao salvar biblioteca:', error);
-    }
-  }, []);
 
   // Extrair metadados usando jsmediatags
   const extractMetadata = async (file: File): Promise<Partial<MusicTrack>> => {
@@ -150,7 +118,6 @@ export const useMusicLibrary = () => {
           ];
         }
         
-        saveLibrary(updated);
         return updated;
       });
 
@@ -171,11 +138,7 @@ export const useMusicLibrary = () => {
       tracks: [],
     };
     
-    setPlaylists(prev => {
-      const updated = [...prev, newPlaylist];
-      saveLibrary(updated);
-      return updated;
-    });
+    setPlaylists(prev => [...prev, newPlaylist]);
     
     toast.success(`Playlist "${name}" criada`);
     return newPlaylist.id;
@@ -183,32 +146,25 @@ export const useMusicLibrary = () => {
 
   // Remover música de uma playlist
   const removeTrack = (playlistId: string, trackId: string) => {
-    setPlaylists(prev => {
-      const updated = prev.map(p =>
+    setPlaylists(prev =>
+      prev.map(p =>
         p.id === playlistId
           ? { ...p, tracks: p.tracks.filter(t => t.id !== trackId) }
           : p
-      );
-      saveLibrary(updated);
-      return updated;
-    });
+      )
+    );
     toast.success('Música removida');
   };
 
   // Remover playlist
   const removePlaylist = (playlistId: string) => {
-    setPlaylists(prev => {
-      const updated = prev.filter(p => p.id !== playlistId);
-      saveLibrary(updated);
-      return updated;
-    });
+    setPlaylists(prev => prev.filter(p => p.id !== playlistId));
     toast.success('Playlist removida');
   };
 
   // Limpar toda a biblioteca
   const clearLibrary = () => {
     setPlaylists([]);
-    localStorage.removeItem(STORAGE_KEY);
     toast.info('Biblioteca limpa');
   };
 
@@ -216,11 +172,6 @@ export const useMusicLibrary = () => {
   const getAllTracks = (): MusicTrack[] => {
     return playlists.flatMap(p => p.tracks);
   };
-
-  // Carregar biblioteca salva na inicialização
-  useEffect(() => {
-    loadSavedLibrary();
-  }, [loadSavedLibrary]);
 
   return {
     playlists,

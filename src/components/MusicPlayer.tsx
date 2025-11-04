@@ -1,6 +1,7 @@
-import { Music, Plus, Trash2, Upload, Folder } from 'lucide-react';
+import { Music, Plus, Trash2, Upload, Folder, Play, Pause } from 'lucide-react';
 import { Button } from './ui/button';
 import { useMusicLibrary } from '@/hooks/useMusicLibrary';
+import { useMusicPlayer } from '@/contexts/MusicPlayerContext';
 import { useState } from 'react';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -26,6 +27,8 @@ export const MusicPlayer = () => {
     removePlaylist,
     clearLibrary,
   } = useMusicLibrary();
+
+  const { playTrack, currentTrack, isPlaying } = useMusicPlayer();
 
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [selectedPlaylist, setSelectedPlaylist] = useState<string>('');
@@ -226,38 +229,59 @@ export const MusicPlayer = () => {
             {currentPlaylist && currentPlaylist.tracks.length > 0 ? (
               <ScrollArea className="h-[calc(100vh-16rem)]">
                 <div className="space-y-2">
-                  {currentPlaylist.tracks.map((track) => (
-                    <div
-                      key={track.id}
-                      className="flex items-center gap-4 p-3 rounded-lg border hover:bg-muted/50 transition-colors group"
-                    >
-                      {track.artwork ? (
-                        <img
-                          src={track.artwork}
-                          alt={track.title}
-                          className="w-12 h-12 rounded object-cover"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded bg-muted flex items-center justify-center">
-                          <Music className="h-6 w-6 text-muted-foreground" />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{track.title}</p>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {track.artist} • {track.album}
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeTrack(currentPlaylist.id, track.id)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  {currentPlaylist.tracks.map((track) => {
+                    const isCurrentTrack = currentTrack?.id === track.id;
+                    const isTrackPlaying = isCurrentTrack && isPlaying;
+                    
+                    return (
+                      <div
+                        key={track.id}
+                        className={`flex items-center gap-4 p-3 rounded-lg border transition-colors group ${
+                          isCurrentTrack ? 'bg-primary/10 border-primary/30' : 'hover:bg-muted/50'
+                        }`}
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
+                        {track.artwork ? (
+                          <img
+                            src={track.artwork}
+                            alt={track.title}
+                            className="w-12 h-12 rounded object-cover"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded bg-muted flex items-center justify-center">
+                            <Music className="h-6 w-6 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{track.title}</p>
+                          <p className="text-sm text-muted-foreground truncate">
+                            {track.artist} • {track.album}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => playTrack(track)}
+                            className={isCurrentTrack ? 'text-primary' : ''}
+                          >
+                            {isTrackPlaying ? (
+                              <Pause className="h-4 w-4" />
+                            ) : (
+                              <Play className="h-4 w-4" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeTrack(currentPlaylist.id, track.id)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </ScrollArea>
             ) : (
@@ -296,6 +320,9 @@ export const MusicPlayer = () => {
         </p>
         <p className="text-sm text-muted-foreground text-center mt-2">
           Use o mini-player no topo da página para controlar a reprodução
+        </p>
+        <p className="text-xs text-muted-foreground/70 text-center mt-2">
+          ⚠️ As músicas ficam armazenadas apenas durante a sessão atual. Ao recarregar a página, será necessário adicioná-las novamente.
         </p>
       </div>
     </div>
