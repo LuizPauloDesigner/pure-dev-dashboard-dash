@@ -90,9 +90,13 @@ export const Budgets = () => {
   const selectCatalogItem = (itemId: string, catalogItemId: string) => {
     const catalogItem = state.serviceCatalog.find(i => i.id === catalogItemId);
     if (catalogItem) {
+      const price = catalogItem.useIdealHourlyRate 
+        ? state.pricingData.idealHourlyRate 
+        : catalogItem.unitPrice;
+      
       setItems(items.map(item =>
         item.id === itemId
-          ? { ...item, description: catalogItem.description, unitPrice: catalogItem.unitPrice.toString() }
+          ? { ...item, description: catalogItem.description, unitPrice: price.toString() }
           : item
       ));
     }

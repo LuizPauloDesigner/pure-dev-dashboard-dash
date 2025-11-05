@@ -208,6 +208,7 @@ export interface ServiceCatalogItem {
   id: string;
   description: string;
   unitPrice: number;
+  useIdealHourlyRate?: boolean;
   createdAt: string;
 }
 
@@ -231,6 +232,15 @@ export interface Budget {
   status: 'draft' | 'sent' | 'approved';
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PricingData {
+  fixedCosts: number;
+  desiredSalary: number;
+  taxesPercent: number;
+  hoursPerDay: number;
+  daysPerMonth: number;
+  idealHourlyRate: number;
 }
 
 export interface AppState {
@@ -267,6 +277,8 @@ export interface AppState {
   serviceCatalog: ServiceCatalogItem[];
   budgets: Budget[];
   encryptedBudgets?: string;
+  pricingData: PricingData;
+  encryptedPricingData?: string;
 }
 
 interface AppContextType {
@@ -344,6 +356,7 @@ interface AppContextType {
   addBudget: (budget: Omit<Budget, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updateBudget: (id: string, updates: Partial<Budget>) => void;
   deleteBudget: (id: string) => void;
+  updatePricingData: (data: PricingData) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -403,6 +416,14 @@ const initialState: AppState = {
   },
   serviceCatalog: [],
   budgets: [],
+  pricingData: {
+    fixedCosts: 0,
+    desiredSalary: 0,
+    taxesPercent: 0,
+    hoursPerDay: 8,
+    daysPerMonth: 22,
+    idealHourlyRate: 0,
+  },
 };
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
@@ -1087,6 +1108,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
+  const updatePricingData = (data: PricingData) => {
+    setState(prev => ({
+      ...prev,
+      pricingData: data,
+    }));
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -1161,10 +1189,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         addServiceCatalogItem,
         updateServiceCatalogItem,
         deleteServiceCatalogItem,
-        addBudget,
-        updateBudget,
-        deleteBudget,
-      }}
+      addBudget,
+      updateBudget,
+      deleteBudget,
+      updatePricingData,
+    }}
     >
       {children}
     </AppContext.Provider>

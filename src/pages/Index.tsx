@@ -20,6 +20,7 @@ import { Wellness } from '@/components/Wellness';
 import { Settings } from '@/components/Settings';
 import { MusicPlayer } from '@/components/MusicPlayer';
 import { Budgets } from '@/components/Budgets';
+import { Pricing } from '@/components/Pricing';
 import { CommandPalette } from '@/components/CommandPalette';
 import { cn } from '@/lib/utils';
 import React from 'react';
@@ -40,6 +41,7 @@ const MainContent = () => {
       {currentTab === 'passwords' && <Passwords />}
       {currentTab === 'contacts' && <Contacts />}
       {currentTab === 'orcamentos' && <Budgets />}
+      {currentTab === 'precificador' && <Pricing />}
       {currentTab === 'finance' && <Finance />}
       {currentTab === 'diary' && <Diary />}
       {currentTab === 'wellness' && <Wellness />}

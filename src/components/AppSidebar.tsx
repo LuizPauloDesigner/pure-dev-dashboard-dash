@@ -29,6 +29,7 @@ import {
   ListChecks,
   Music,
   Receipt,
+  Calculator,
   LucideIcon,
 } from 'lucide-react';
 
@@ -52,6 +53,7 @@ const menuItems: MenuItem[] = [
   { id: 'passwords', label: 'Senhas', icon: Lock },
   { id: 'contacts', label: 'Contatos', icon: User },
   { id: 'orcamentos', label: 'Orçamentos', icon: Receipt },
+  { id: 'precificador', label: 'Precificador', icon: Calculator },
   { id: 'finance', label: 'Financeiro', icon: DollarSign },
   { id: 'diary', label: 'Diário', icon: Calendar },
   { id: 'draft', label: 'Rascunho', icon: FileEdit },

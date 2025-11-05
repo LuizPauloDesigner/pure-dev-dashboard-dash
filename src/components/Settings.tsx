@@ -7,6 +7,7 @@ import { Textarea } from './ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Label } from './ui/label';
+import { Badge } from './ui/badge';
 import { Plus, Trash2, Edit2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -61,7 +62,7 @@ export const Settings = () => {
   // Service catalog state
   const [isServiceDialogOpen, setIsServiceDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<string | null>(null);
-  const [serviceForm, setServiceForm] = useState({ description: '', unitPrice: '' });
+  const [serviceForm, setServiceForm] = useState({ description: '', unitPrice: '', useIdealHourlyRate: false });
 
   const handleAddProject = () => {
     if (!projectForm.name.trim()) {
@@ -272,6 +273,7 @@ export const Settings = () => {
     const serviceData = {
       description: serviceForm.description,
       unitPrice: parseFloat(serviceForm.unitPrice) || 0,
+      useIdealHourlyRate: serviceForm.useIdealHourlyRate,
     };
 
     if (editingService) {
@@ -282,7 +284,7 @@ export const Settings = () => {
       toast.success('Serviço adicionado');
     }
 
-    setServiceForm({ description: '', unitPrice: '' });
+    setServiceForm({ description: '', unitPrice: '', useIdealHourlyRate: false });
     setEditingService(null);
     setIsServiceDialogOpen(false);
   };
@@ -290,7 +292,11 @@ export const Settings = () => {
   const handleEditService = (serviceId: string) => {
     const service = state.serviceCatalog.find(s => s.id === serviceId);
     if (service) {
-      setServiceForm({ description: service.description, unitPrice: service.unitPrice.toString() });
+      setServiceForm({ 
+        description: service.description, 
+        unitPrice: service.unitPrice.toString(),
+        useIdealHourlyRate: service.useIdealHourlyRate || false,
+      });
       setEditingService(serviceId);
       setIsServiceDialogOpen(true);
     }
@@ -637,7 +643,7 @@ export const Settings = () => {
               <DialogTrigger asChild>
                 <Button size="sm" onClick={() => {
                   setEditingService(null);
-                  setServiceForm({ description: '', unitPrice: '' });
+                  setServiceForm({ description: '', unitPrice: '', useIdealHourlyRate: false });
                 }}>
                   <Plus className="h-4 w-4 mr-2" />
                   Novo Serviço
@@ -656,7 +662,7 @@ export const Settings = () => {
                       placeholder="Ex: Desenvolvimento de website"
                     />
                   </div>
-                  <div>
+                   <div>
                     <Label>Preço Unitário (R$)</Label>
                     <Input
                       type="number"
@@ -664,7 +670,25 @@ export const Settings = () => {
                       value={serviceForm.unitPrice}
                       onChange={(e) => setServiceForm({ ...serviceForm, unitPrice: e.target.value })}
                       placeholder="0.00"
+                      disabled={serviceForm.useIdealHourlyRate}
                     />
+                    {serviceForm.useIdealHourlyRate && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Preço vinculado ao Valor/Hora Ideal
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="useIdealHourlyRate"
+                      checked={serviceForm.useIdealHourlyRate}
+                      onChange={(e) => setServiceForm({ ...serviceForm, useIdealHourlyRate: e.target.checked })}
+                      className="h-4 w-4 rounded border-input"
+                    />
+                    <Label htmlFor="useIdealHourlyRate" className="text-sm font-normal cursor-pointer">
+                      Usar Valor/Hora Ideal do Precificador
+                    </Label>
                   </div>
                   <Button onClick={handleAddService} className="w-full">
                     {editingService ? 'Atualizar' : 'Adicionar'} Serviço
@@ -682,11 +706,18 @@ export const Settings = () => {
           ) : (
             state.serviceCatalog.map(service => (
               <div key={service.id} className="flex items-center justify-between p-3 rounded-lg border">
-                <div>
-                  <span className="font-medium">{service.description}</span>
-                  <span className="text-sm text-muted-foreground ml-2">
-                    - R$ {service.unitPrice.toFixed(2)}
-                  </span>
+                <div className="flex items-center gap-2">
+                  <div>
+                    <span className="font-medium">{service.description}</span>
+                    <span className="text-sm text-muted-foreground ml-2">
+                      - R$ {service.unitPrice.toFixed(2)}
+                    </span>
+                  </div>
+                  {service.useIdealHourlyRate && (
+                    <Badge variant="secondary" className="text-xs">
+                      Valor/Hora Ideal
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <Button
