@@ -28,7 +28,7 @@ export const MusicPlayer = () => {
     clearLibrary,
   } = useMusicLibrary();
 
-  const { playTrack, currentTrack, isPlaying } = useMusicPlayer();
+  const { playTrack, currentTrack, isPlaying, setPlaylist } = useMusicPlayer();
 
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [selectedPlaylist, setSelectedPlaylist] = useState<string>('');
@@ -261,7 +261,10 @@ export const MusicPlayer = () => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => playTrack(track)}
+                            onClick={() => {
+                              setPlaylist(currentPlaylist.tracks);
+                              playTrack(track);
+                            }}
                             className={isCurrentTrack ? 'text-primary' : ''}
                           >
                             {isTrackPlaying ? (
