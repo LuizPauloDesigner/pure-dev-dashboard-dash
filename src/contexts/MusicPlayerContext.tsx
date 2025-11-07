@@ -145,12 +145,15 @@ export const MusicPlayerProvider: React.FC<MusicPlayerProviderProps> = ({ childr
   };
 
   const handleEnded = () => {
+    setIsPlaying(false);
     if (repeat) {
+      // Repetir a música atual
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
         play();
       }
-    } else {
+    } else if (playlist.length > 0) {
+      // Tocar próxima música da playlist
       playNext();
     }
   };

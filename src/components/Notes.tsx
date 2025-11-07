@@ -4,9 +4,10 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Plus, Star, Trash2, Save } from 'lucide-react';
+import { Plus, Star, Trash2, Save, Bold, Italic, List, CheckSquare, Code, Link as LinkIcon, Image as ImageIcon, Table } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
+import remarkGfm from 'remark-gfm';
 
 export const Notes = () => {
   const { state, currentProject, addNote, updateNote, deleteNote } = useApp();
@@ -66,6 +67,63 @@ export const Notes = () => {
       setContent('');
     }
     toast.success('Nota deletada');
+  };
+
+  const insertMarkdown = (syntax: string) => {
+    const textarea = document.querySelector('textarea') as HTMLTextAreaElement;
+    if (!textarea) return;
+    
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = content.substring(start, end);
+    
+    let newText = '';
+    let cursorOffset = 0;
+    
+    switch(syntax) {
+      case 'bold':
+        newText = `**${selectedText || 'texto'}**`;
+        cursorOffset = selectedText ? newText.length : 2;
+        break;
+      case 'italic':
+        newText = `*${selectedText || 'texto'}*`;
+        cursorOffset = selectedText ? newText.length : 1;
+        break;
+      case 'list':
+        newText = `\n- ${selectedText || 'item'}`;
+        cursorOffset = newText.length;
+        break;
+      case 'checklist':
+        newText = `\n- [ ] ${selectedText || 'tarefa'}`;
+        cursorOffset = newText.length;
+        break;
+      case 'code':
+        newText = `\`\`\`\n${selectedText || 'código'}\n\`\`\``;
+        cursorOffset = selectedText ? newText.length : 4;
+        break;
+      case 'link':
+        newText = `[${selectedText || 'texto'}](url)`;
+        cursorOffset = selectedText ? newText.length - 4 : 1;
+        break;
+      case 'image':
+        newText = `![${selectedText || 'alt'}](url)`;
+        cursorOffset = newText.length - 4;
+        break;
+      case 'table':
+        newText = `\n| Coluna 1 | Coluna 2 |\n|----------|----------|\n| Célula 1 | Célula 2 |\n`;
+        cursorOffset = newText.length;
+        break;
+      default:
+        return;
+    }
+    
+    const newContent = content.substring(0, start) + newText + content.substring(end);
+    setContent(newContent);
+    
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + cursorOffset, start + cursorOffset);
+    }, 0);
   };
 
   return (
@@ -150,8 +208,86 @@ export const Notes = () => {
                   onChange={(e) => setTitle(e.target.value)}
                   disabled={!isEditing}
                 />
+                
+                {isEditing && (
+                  <div className="flex flex-wrap gap-1 p-2 bg-muted rounded-lg">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => insertMarkdown('bold')}
+                      title="Negrito"
+                    >
+                      <Bold className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => insertMarkdown('italic')}
+                      title="Itálico"
+                    >
+                      <Italic className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => insertMarkdown('list')}
+                      title="Lista"
+                    >
+                      <List className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => insertMarkdown('checklist')}
+                      title="Checklist"
+                    >
+                      <CheckSquare className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => insertMarkdown('code')}
+                      title="Código"
+                    >
+                      <Code className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => insertMarkdown('link')}
+                      title="Link"
+                    >
+                      <LinkIcon className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => insertMarkdown('image')}
+                      title="Imagem"
+                    >
+                      <ImageIcon className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => insertMarkdown('table')}
+                      title="Tabela"
+                    >
+                      <Table className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+                
                 <Textarea
-                  placeholder="Escreva sua nota em Markdown..."
+                  placeholder="Escreva sua nota em Markdown... Use a barra de ferramentas acima para formatação rápida!"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   className="min-h-[300px] font-mono"
@@ -167,7 +303,19 @@ export const Notes = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="prose dark:prose-invert max-w-none">
-                    <ReactMarkdown>{content}</ReactMarkdown>
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        input: ({ node, ...props }) => {
+                          if (props.type === 'checkbox') {
+                            return <input {...props} className="mr-2" />;
+                          }
+                          return <input {...props} />;
+                        }
+                      }}
+                    >
+                      {content}
+                    </ReactMarkdown>
                   </div>
                 </CardContent>
               </Card>

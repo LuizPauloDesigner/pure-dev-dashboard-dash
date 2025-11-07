@@ -197,30 +197,32 @@ export const PomodoroTimer = () => {
 
   return (
     <>
-      <div className="hidden md:flex items-center gap-2 rounded-lg border bg-card p-2">
-        <Timer className="h-4 w-4 text-primary" />
-        <span className="font-mono text-sm font-medium min-w-[4rem]">
-          {formatTime(timeLeft)}
-        </span>
-        <div className="flex gap-1">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8"
-            onClick={toggleTimer}
-          >
-            {isRunning ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8"
-            onClick={resetTimer}
-          >
-            <RotateCcw className="h-3 w-3" />
-          </Button>
+      {mode === 'focus' && (
+        <div className="hidden md:flex items-center gap-2 rounded-lg border bg-card p-2">
+          <Timer className="h-4 w-4 text-primary" />
+          <span className="font-mono text-sm font-medium min-w-[4rem]">
+            {formatTime(timeLeft)}
+          </span>
+          <div className="flex gap-1">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8"
+              onClick={toggleTimer}
+            >
+              {isRunning ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8"
+              onClick={resetTimer}
+            >
+              <RotateCcw className="h-3 w-3" />
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       <ActiveBreakModal
         isOpen={showBreakModal}
