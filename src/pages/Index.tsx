@@ -21,6 +21,8 @@ import { Settings } from '@/components/Settings';
 import { MusicPlayer } from '@/components/MusicPlayer';
 import { Budgets } from '@/components/Budgets';
 import { Pricing } from '@/components/Pricing';
+import { Stock } from '@/components/Stock';
+import { TechSheet } from '@/components/TechSheet';
 import { CommandPalette } from '@/components/CommandPalette';
 import { cn } from '@/lib/utils';
 import React from 'react';
@@ -42,6 +44,8 @@ const MainContent = () => {
       {currentTab === 'contacts' && <Contacts />}
       {currentTab === 'orcamentos' && <Budgets />}
       {currentTab === 'precificador' && <Pricing />}
+      {currentTab === 'estoque' && <Stock />}
+      {currentTab === 'fichatecnica' && <TechSheet />}
       {currentTab === 'finance' && <Finance />}
       {currentTab === 'diary' && <Diary />}
       {currentTab === 'wellness' && <Wellness />}

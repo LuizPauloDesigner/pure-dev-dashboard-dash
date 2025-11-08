@@ -31,6 +31,8 @@ import {
   Receipt,
   Calculator,
   LucideIcon,
+  Package,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 interface MenuItem {
@@ -54,6 +56,8 @@ const menuItems: MenuItem[] = [
   { id: 'contacts', label: 'Contatos', icon: User },
   { id: 'orcamentos', label: 'Orçamentos', icon: Receipt },
   { id: 'precificador', label: 'Precificador', icon: Calculator },
+  { id: 'estoque', label: 'Estoque', icon: Package },
+  { id: 'fichatecnica', label: 'Ficha Técnica', icon: FileSpreadsheet },
   { id: 'finance', label: 'Financeiro', icon: DollarSign },
   { id: 'diary', label: 'Diário', icon: Calendar },
   { id: 'draft', label: 'Rascunho', icon: FileEdit },

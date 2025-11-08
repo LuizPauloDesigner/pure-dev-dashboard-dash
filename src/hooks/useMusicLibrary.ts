@@ -23,6 +23,26 @@ export const useMusicLibrary = () => {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Carregar playlists do localStorage ao inicializar
+  useEffect(() => {
+    const savedPlaylists = localStorage.getItem('musicPlaylists');
+    if (savedPlaylists) {
+      try {
+        const parsed = JSON.parse(savedPlaylists);
+        setPlaylists(parsed);
+      } catch (error) {
+        console.error('Erro ao carregar playlists:', error);
+      }
+    }
+  }, []);
+
+  // Salvar playlists no localStorage quando mudar
+  useEffect(() => {
+    if (playlists.length > 0) {
+      localStorage.setItem('musicPlaylists', JSON.stringify(playlists));
+    }
+  }, [playlists]);
+
   // Extrair metadados usando jsmediatags
   const extractMetadata = async (file: File): Promise<Partial<MusicTrack>> => {
     return new Promise((resolve) => {

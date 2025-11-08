@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Calculator, DollarSign } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Calculator, DollarSign, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const Pricing = () => {
@@ -18,6 +19,8 @@ export const Pricing = () => {
   
   const [projectHours, setProjectHours] = useState('40');
   const [complexityMultiplier, setComplexityMultiplier] = useState('1.0');
+  const [baseCost, setBaseCost] = useState('0');
+  const [selectedTechSheet, setSelectedTechSheet] = useState('');
 
   const calculateIdealHourlyRate = () => {
     const costs = parseFloat(fixedCosts) || 0;
@@ -56,7 +59,17 @@ export const Pricing = () => {
   const calculateProjectPrice = () => {
     const hours = parseFloat(projectHours) || 0;
     const multiplier = parseFloat(complexityMultiplier) || 1;
-    return state.pricingData.idealHourlyRate * hours * multiplier;
+    const cost = parseFloat(baseCost) || 0;
+    return (state.pricingData.idealHourlyRate * hours * multiplier) + cost;
+  };
+
+  const handleImportFromTechSheet = () => {
+    if (!selectedTechSheet) return;
+    const sheet = state.techSheets.find(s => s.id === selectedTechSheet);
+    if (sheet) {
+      setBaseCost(sheet.custoPorUnidade.toFixed(2));
+      toast.success(`Custo base importado: R$ ${sheet.custoPorUnidade.toFixed(2)}`);
+    }
   };
 
   return (
@@ -190,34 +203,69 @@ export const Pricing = () => {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label>Horas Estimadas</Label>
-                  <Input
-                    type="number"
-                    value={projectHours}
-                    onChange={(e) => setProjectHours(e.target.value)}
-                    placeholder="Ex: 40"
-                    min="0"
-                    step="0.5"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Tempo estimado para o projeto
-                  </p>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Horas Estimadas</Label>
+                    <Input
+                      type="number"
+                      value={projectHours}
+                      onChange={(e) => setProjectHours(e.target.value)}
+                      placeholder="Ex: 40"
+                      min="0"
+                      step="0.5"
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Multiplicador de Complexidade</Label>
+                    <Input
+                      type="number"
+                      value={complexityMultiplier}
+                      onChange={(e) => setComplexityMultiplier(e.target.value)}
+                      placeholder="Ex: 1.5"
+                      min="0.1"
+                      step="0.1"
+                    />
+                  </div>
+                </div>
+
+                <div className="border-t pt-4">
+                  <Label className="flex items-center gap-2 mb-2">
+                    <FileSpreadsheet className="h-4 w-4" />
+                    Importar Custo Base da Ficha Técnica (Opcional)
+                  </Label>
+                  <div className="flex gap-2">
+                    <Select value={selectedTechSheet} onValueChange={setSelectedTechSheet}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Selecione uma ficha..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {state.techSheets.map((sheet) => (
+                          <SelectItem key={sheet.id} value={sheet.id}>
+                            {sheet.nomeProduto} - R$ {sheet.custoPorUnidade.toFixed(2)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button onClick={handleImportFromTechSheet} disabled={!selectedTechSheet}>
+                      Importar
+                    </Button>
+                  </div>
                 </div>
 
                 <div>
-                  <Label>Multiplicador de Complexidade</Label>
+                  <Label>Custo Base (Materiais) - R$</Label>
                   <Input
                     type="number"
-                    value={complexityMultiplier}
-                    onChange={(e) => setComplexityMultiplier(e.target.value)}
-                    placeholder="Ex: 1.5"
-                    min="0.1"
-                    step="0.1"
+                    value={baseCost}
+                    onChange={(e) => setBaseCost(e.target.value)}
+                    placeholder="0.00"
+                    min="0"
+                    step="0.01"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    1.0 = normal, 1.5 = complexo, 2.0 = muito complexo
+                    Custo de materiais ou produção
                   </p>
                 </div>
               </div>
@@ -228,9 +276,9 @@ export const Pricing = () => {
                   R$ {calculateProjectPrice().toFixed(2)}
                 </p>
                 <div className="mt-4 text-sm text-muted-foreground space-y-1">
-                  <p>• Valor/Hora: R$ {state.pricingData.idealHourlyRate.toFixed(2)}</p>
-                  <p>• Horas: {projectHours}h</p>
-                  <p>• Multiplicador: {complexityMultiplier}x</p>
+                  <p>• Mão de obra: R$ {(state.pricingData.idealHourlyRate * parseFloat(projectHours || '0') * parseFloat(complexityMultiplier || '1')).toFixed(2)}</p>
+                  <p>• Custo base: R$ {parseFloat(baseCost || '0').toFixed(2)}</p>
+                  <p className="pt-2 border-t">• Horas: {projectHours}h × Valor/Hora: R$ {state.pricingData.idealHourlyRate.toFixed(2)} × {complexityMultiplier}x</p>
                 </div>
               </div>
             </>

@@ -243,6 +243,38 @@ export interface PricingData {
   idealHourlyRate: number;
 }
 
+export interface StockMaterial {
+  id: string;
+  nomeMaterial: string;
+  qtdEmbalagem: number;
+  unidadeEmbalagem: string;
+  precoPago: number;
+  custoUnitario: number;
+  createdAt: string;
+}
+
+export interface TechSheetItem {
+  id: string;
+  materialId: string;
+  materialName: string;
+  quantidadeUsada: number;
+  unidade: string;
+  custoUnitario: number;
+  custoTotalItem: number;
+}
+
+export interface TechSheet {
+  id: string;
+  projectId: string;
+  nomeProduto: string;
+  rendimento: string;
+  itens: TechSheetItem[];
+  custoTotalProduto: number;
+  custoPorUnidade: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AppState {
   projects: Project[];
   notes: Note[];
@@ -279,6 +311,10 @@ export interface AppState {
   encryptedBudgets?: string;
   pricingData: PricingData;
   encryptedPricingData?: string;
+  stockMaterials: StockMaterial[];
+  encryptedStock?: string;
+  techSheets: TechSheet[];
+  encryptedTechSheets?: string;
 }
 
 interface AppContextType {
@@ -357,6 +393,12 @@ interface AppContextType {
   updateBudget: (id: string, updates: Partial<Budget>) => void;
   deleteBudget: (id: string) => void;
   updatePricingData: (data: PricingData) => void;
+  addStockMaterial: (material: Omit<StockMaterial, 'id' | 'createdAt' | 'custoUnitario'>) => void;
+  updateStockMaterial: (id: string, updates: Partial<StockMaterial>) => void;
+  deleteStockMaterial: (id: string) => void;
+  addTechSheet: (sheet: Omit<TechSheet, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateTechSheet: (id: string, updates: Partial<TechSheet>) => void;
+  deleteTechSheet: (id: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -424,6 +466,8 @@ const initialState: AppState = {
     daysPerMonth: 22,
     idealHourlyRate: 0,
   },
+  stockMaterials: [],
+  techSheets: [],
 };
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
@@ -1115,6 +1159,71 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
+  const addStockMaterial = (material: Omit<StockMaterial, 'id' | 'createdAt' | 'custoUnitario'>) => {
+    const custoUnitario = material.precoPago / material.qtdEmbalagem;
+    setState(prev => ({
+      ...prev,
+      stockMaterials: [...prev.stockMaterials, {
+        ...material,
+        id: Date.now().toString(),
+        custoUnitario,
+        createdAt: new Date().toISOString(),
+      }],
+    }));
+  };
+
+  const updateStockMaterial = (id: string, updates: Partial<StockMaterial>) => {
+    setState(prev => ({
+      ...prev,
+      stockMaterials: prev.stockMaterials.map(material => {
+        if (material.id === id) {
+          const updated = { ...material, ...updates };
+          if (updates.precoPago !== undefined || updates.qtdEmbalagem !== undefined) {
+            updated.custoUnitario = updated.precoPago / updated.qtdEmbalagem;
+          }
+          return updated;
+        }
+        return material;
+      }),
+    }));
+  };
+
+  const deleteStockMaterial = (id: string) => {
+    setState(prev => ({
+      ...prev,
+      stockMaterials: prev.stockMaterials.filter(material => material.id !== id),
+    }));
+  };
+
+  const addTechSheet = (sheet: Omit<TechSheet, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    setState(prev => ({
+      ...prev,
+      techSheets: [...prev.techSheets, {
+        ...sheet,
+        id: Date.now().toString(),
+        createdAt: now,
+        updatedAt: now,
+      }],
+    }));
+  };
+
+  const updateTechSheet = (id: string, updates: Partial<TechSheet>) => {
+    setState(prev => ({
+      ...prev,
+      techSheets: prev.techSheets.map(sheet =>
+        sheet.id === id ? { ...sheet, ...updates, updatedAt: new Date().toISOString() } : sheet
+      ),
+    }));
+  };
+
+  const deleteTechSheet = (id: string) => {
+    setState(prev => ({
+      ...prev,
+      techSheets: prev.techSheets.filter(sheet => sheet.id !== id),
+    }));
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -1193,6 +1302,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       updateBudget,
       deleteBudget,
       updatePricingData,
+      addStockMaterial,
+      updateStockMaterial,
+      deleteStockMaterial,
+      addTechSheet,
+      updateTechSheet,
+      deleteTechSheet,
     }}
     >
       {children}
