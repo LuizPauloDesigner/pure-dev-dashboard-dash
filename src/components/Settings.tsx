@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
-import { Plus, Trash2, Edit2 } from 'lucide-react';
+import { Plus, Trash2, Edit2, Key } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const Settings = () => {
@@ -63,6 +63,11 @@ export const Settings = () => {
   const [isServiceDialogOpen, setIsServiceDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<string | null>(null);
   const [serviceForm, setServiceForm] = useState({ description: '', unitPrice: '', useIdealHourlyRate: false });
+
+  // Master password state
+  const [isMasterPasswordDialogOpen, setIsMasterPasswordDialogOpen] = useState(false);
+  const [masterPasswordForm, setMasterPasswordForm] = useState({ current: '', new: '', confirm: '' });
+  const [hasMasterPassword, setHasMasterPassword] = useState(!!localStorage.getItem('masterPassword'));
 
   const handleAddProject = () => {
     if (!projectForm.name.trim()) {
@@ -309,6 +314,65 @@ export const Settings = () => {
     }
   };
 
+  const handleSaveMasterPassword = () => {
+    if (!hasMasterPassword) {
+      // Criando nova senha
+      if (!masterPasswordForm.new || !masterPasswordForm.confirm) {
+        toast.error('Preencha todos os campos');
+        return;
+      }
+      if (masterPasswordForm.new !== masterPasswordForm.confirm) {
+        toast.error('As senhas não coincidem');
+        return;
+      }
+      if (masterPasswordForm.new.length < 6) {
+        toast.error('A senha deve ter pelo menos 6 caracteres');
+        return;
+      }
+      localStorage.setItem('masterPassword', masterPasswordForm.new);
+      setHasMasterPassword(true);
+      toast.success('Senha Mestra criada com sucesso!');
+    } else {
+      // Alterando senha existente
+      const currentPassword = localStorage.getItem('masterPassword');
+      if (masterPasswordForm.current !== currentPassword) {
+        toast.error('Senha atual incorreta');
+        return;
+      }
+      if (!masterPasswordForm.new || !masterPasswordForm.confirm) {
+        toast.error('Preencha a nova senha');
+        return;
+      }
+      if (masterPasswordForm.new !== masterPasswordForm.confirm) {
+        toast.error('As novas senhas não coincidem');
+        return;
+      }
+      if (masterPasswordForm.new.length < 6) {
+        toast.error('A senha deve ter pelo menos 6 caracteres');
+        return;
+      }
+      localStorage.setItem('masterPassword', masterPasswordForm.new);
+      toast.success('Senha Mestra alterada com sucesso!');
+    }
+    setMasterPasswordForm({ current: '', new: '', confirm: '' });
+    setIsMasterPasswordDialogOpen(false);
+  };
+
+  const handleRemoveMasterPassword = () => {
+    const currentPassword = localStorage.getItem('masterPassword');
+    if (masterPasswordForm.current !== currentPassword) {
+      toast.error('Senha atual incorreta');
+      return;
+    }
+    if (confirm('⚠️ ATENÇÃO: Ao remover a Senha Mestra, você não poderá mais descriptografar dados exportados anteriormente. Deseja continuar?')) {
+      localStorage.removeItem('masterPassword');
+      setHasMasterPassword(false);
+      setMasterPasswordForm({ current: '', new: '', confirm: '' });
+      setIsMasterPasswordDialogOpen(false);
+      toast.success('Senha Mestra removida');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Configurações</h2>
@@ -413,6 +477,83 @@ export const Settings = () => {
                 Importar Dados
               </div>
             </label>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5" />
+              Senha Mestra
+            </CardTitle>
+            <Dialog open={isMasterPasswordDialogOpen} onOpenChange={setIsMasterPasswordDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" onClick={() => setMasterPasswordForm({ current: '', new: '', confirm: '' })}>
+                  <Edit2 className="h-4 w-4 mr-2" />
+                  {hasMasterPassword ? 'Alterar' : 'Configurar'} Senha
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{hasMasterPassword ? 'Alterar' : 'Configurar'} Senha Mestra</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 pt-4">
+                  {hasMasterPassword && (
+                    <div>
+                      <Label>Senha Atual</Label>
+                      <Input
+                        type="password"
+                        value={masterPasswordForm.current}
+                        onChange={(e) => setMasterPasswordForm({ ...masterPasswordForm, current: e.target.value })}
+                        placeholder="Digite a senha atual"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <Label>Nova Senha</Label>
+                    <Input
+                      type="password"
+                      value={masterPasswordForm.new}
+                      onChange={(e) => setMasterPasswordForm({ ...masterPasswordForm, new: e.target.value })}
+                      placeholder="Mínimo 6 caracteres"
+                    />
+                  </div>
+                  <div>
+                    <Label>Confirmar Nova Senha</Label>
+                    <Input
+                      type="password"
+                      value={masterPasswordForm.confirm}
+                      onChange={(e) => setMasterPasswordForm({ ...masterPasswordForm, confirm: e.target.value })}
+                      placeholder="Digite novamente"
+                    />
+                  </div>
+                  <Button onClick={handleSaveMasterPassword} className="w-full">
+                    {hasMasterPassword ? 'Alterar' : 'Criar'} Senha
+                  </Button>
+                  {hasMasterPassword && (
+                    <Button variant="destructive" onClick={handleRemoveMasterPassword} className="w-full">
+                      Remover Senha Mestra
+                    </Button>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Status:</span>
+              <Badge variant={hasMasterPassword ? "default" : "secondary"}>
+                {hasMasterPassword ? '🔒 Configurada' : '🔓 Não Configurada'}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              A Senha Mestra protege módulos sensíveis como Estoque, Ficha Técnica e Senhas. 
+              Configure-a para exportar/importar dados criptografados desses módulos.
+            </p>
           </div>
         </CardContent>
       </Card>
