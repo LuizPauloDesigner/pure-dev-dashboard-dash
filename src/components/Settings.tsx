@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
-import { Plus, Trash2, Edit2, Key } from 'lucide-react';
+import { Plus, Trash2, Edit2, Key, ToggleLeft, ToggleRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const Settings = () => {
@@ -33,6 +33,7 @@ export const Settings = () => {
     addServiceCatalogItem,
     updateServiceCatalogItem,
     deleteServiceCatalogItem,
+    toggleModule,
   } = useApp();
   const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<string | null>(null);
@@ -554,6 +555,84 @@ export const Settings = () => {
               A Senha Mestra protege módulos sensíveis como Estoque, Ficha Técnica e Senhas. 
               Configure-a para exportar/importar dados criptografados desses módulos.
             </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ToggleRight className="h-5 w-5" />
+            Gerenciar Módulos
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Habilite ou desabilite módulos para personalizar sua Central de Comando. 
+            Módulos desabilitados não aparecerão na barra lateral.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {[
+              { id: 'dashboard', label: 'Dashboard', protected: true },
+              { id: 'wellness', label: 'Bem-Estar', protected: false },
+              { id: 'musica', label: 'Biblioteca de Músicas', protected: false },
+              { id: 'favorites', label: 'Favoritos', protected: false },
+              { id: 'notes', label: 'Notas', protected: false },
+              { id: 'prompts', label: 'Prompts IA', protected: false },
+              { id: 'snippets', label: 'Snippets', protected: false },
+              { id: 'cheatsheet', label: 'Cheatsheet', protected: false },
+              { id: 'kanban', label: 'Kanban', protected: false },
+              { id: 'checklists', label: 'Listas Pessoais', protected: false },
+              { id: 'passwords', label: 'Senhas', protected: false },
+              { id: 'contacts', label: 'Contatos', protected: false },
+              { id: 'orcamentos', label: 'Orçamentos', protected: false },
+              { id: 'precificador', label: 'Precificador', protected: false },
+              { id: 'estoque', label: 'Estoque', protected: false },
+              { id: 'fichatecnica', label: 'Ficha Técnica', protected: false },
+              { id: 'finance', label: 'Financeiro', protected: false },
+              { id: 'diary', label: 'Diário', protected: false },
+              { id: 'draft', label: 'Rascunho', protected: false },
+              { id: 'settings', label: 'Configurações', protected: true },
+            ].map(module => {
+              const isEnabled = state.enabledModules.includes(module.id);
+              return (
+                <div 
+                  key={module.id} 
+                  className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                >
+                  <span className="font-medium text-sm">{module.label}</span>
+                  <Button
+                    variant={isEnabled ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      if (module.protected) {
+                        toast.error('Este módulo não pode ser desabilitado');
+                        return;
+                      }
+                      toggleModule(module.id);
+                      toast.success(
+                        isEnabled 
+                          ? `${module.label} desabilitado` 
+                          : `${module.label} habilitado`
+                      );
+                    }}
+                    disabled={module.protected}
+                  >
+                    {isEnabled ? (
+                      <>
+                        <ToggleRight className="h-4 w-4 mr-1" />
+                        Ativo
+                      </>
+                    ) : (
+                      <>
+                        <ToggleLeft className="h-4 w-4 mr-1" />
+                        Inativo
+                      </>
+                    )}
+                  </Button>
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>

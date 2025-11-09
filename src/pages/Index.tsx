@@ -28,7 +28,14 @@ import { cn } from '@/lib/utils';
 import React from 'react';
 
 const MainContent = () => {
-  const { currentTab } = useApp();
+  const { currentTab, state, setCurrentTab } = useApp();
+
+  // Redirecionar para dashboard se o módulo atual estiver desabilitado
+  React.useEffect(() => {
+    if (!state.enabledModules.includes(currentTab)) {
+      setCurrentTab('dashboard');
+    }
+  }, [currentTab, state.enabledModules, setCurrentTab]);
 
   return (
     <main className="container py-6">

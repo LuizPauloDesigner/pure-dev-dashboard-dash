@@ -65,9 +65,14 @@ const menuItems: MenuItem[] = [
 ];
 
 export function AppSidebar() {
-  const { currentTab, setCurrentTab } = useApp();
+  const { state, currentTab, setCurrentTab } = useApp();
   const { state: sidebarState, isMobile, setOpenMobile } = useSidebar();
   const isCollapsed = sidebarState === 'collapsed';
+
+  // Filtrar apenas módulos habilitados
+  const enabledMenuItems = menuItems.filter(item => 
+    state.enabledModules.includes(item.id)
+  );
 
   return (
     <Sidebar collapsible="icon" className="border-r">
@@ -78,7 +83,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => {
+              {enabledMenuItems.map((item) => {
                 const isActive = currentTab === item.id;
                 const Icon = item.icon;
                 

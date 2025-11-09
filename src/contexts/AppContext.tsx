@@ -315,6 +315,7 @@ export interface AppState {
   encryptedStock?: string;
   techSheets: TechSheet[];
   encryptedTechSheets?: string;
+  enabledModules: string[];
 }
 
 interface AppContextType {
@@ -399,6 +400,7 @@ interface AppContextType {
   addTechSheet: (sheet: Omit<TechSheet, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updateTechSheet: (id: string, updates: Partial<TechSheet>) => void;
   deleteTechSheet: (id: string) => void;
+  toggleModule: (moduleId: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -468,6 +470,7 @@ const initialState: AppState = {
   },
   stockMaterials: [],
   techSheets: [],
+  enabledModules: ['dashboard', 'wellness', 'musica', 'favorites', 'notes', 'prompts', 'snippets', 'cheatsheet', 'kanban', 'checklists', 'passwords', 'contacts', 'orcamentos', 'precificador', 'estoque', 'fichatecnica', 'finance', 'diary', 'draft', 'settings'],
 };
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
@@ -500,6 +503,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           musicPlayerShuffle: parsed.musicPlayerShuffle ?? false,
           musicPlayerRepeat: parsed.musicPlayerRepeat ?? false,
           wellnessStats: parsed.wellnessStats || { breaks: [] },
+          enabledModules: parsed.enabledModules || initialState.enabledModules,
         });
       } catch (e) {
         console.error('Error loading state:', e);
@@ -1224,6 +1228,18 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
+  const toggleModule = (moduleId: string) => {
+    setState(prev => {
+      const isEnabled = prev.enabledModules.includes(moduleId);
+      return {
+        ...prev,
+        enabledModules: isEnabled
+          ? prev.enabledModules.filter(id => id !== moduleId)
+          : [...prev.enabledModules, moduleId],
+      };
+    });
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -1308,6 +1324,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       addTechSheet,
       updateTechSheet,
       deleteTechSheet,
+      toggleModule,
     }}
     >
       {children}
