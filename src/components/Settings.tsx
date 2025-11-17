@@ -8,8 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
-import { Plus, Trash2, Edit2, Key, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Trash2, Edit2, Key, ToggleLeft, ToggleRight, Download, Upload } from 'lucide-react';
 import { toast } from 'sonner';
+import CryptoJS from 'crypto-js';
 
 export const Settings = () => {
   const { 
@@ -374,6 +375,87 @@ export const Settings = () => {
     }
   };
 
+  const handleExportAllData = () => {
+    const masterPassword = localStorage.getItem('masterPassword');
+    if (!masterPassword) {
+      toast.error('Configure a Senha Mestra primeiro');
+      return;
+    }
+
+    try {
+      const dataToExport = {
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        data: state
+      };
+
+      const encrypted = CryptoJS.AES.encrypt(
+        JSON.stringify(dataToExport),
+        masterPassword
+      ).toString();
+
+      const blob = new Blob([encrypted], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `backup-completo-${new Date().toISOString().split('T')[0]}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success('Backup criado com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao exportar dados');
+      console.error(error);
+    }
+  };
+
+  const handleImportAllData = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const masterPassword = localStorage.getItem('masterPassword');
+    if (!masterPassword) {
+      toast.error('Configure a Senha Mestra primeiro');
+      return;
+    }
+
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const encrypted = e.target?.result as string;
+        const decrypted = CryptoJS.AES.decrypt(encrypted, masterPassword).toString(CryptoJS.enc.Utf8);
+        
+        if (!decrypted) {
+          toast.error('Senha incorreta ou arquivo inválido');
+          return;
+        }
+
+        const imported = JSON.parse(decrypted);
+        
+        // Mesclar dados importados com o estado atual
+        Object.keys(imported.data).forEach((key) => {
+          if (imported.data[key] !== undefined) {
+            localStorage.setItem(key, JSON.stringify(imported.data[key]));
+          }
+        });
+
+        toast.success('Dados importados! Recarregando...');
+        
+        // Recarregar após 1.5 segundos
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } catch (error) {
+        toast.error('Erro ao importar dados. Verifique o arquivo e a senha.');
+        console.error(error);
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  };
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Configurações</h2>
@@ -554,6 +636,45 @@ export const Settings = () => {
             <p className="text-xs text-muted-foreground mt-3">
               A Senha Mestra protege módulos sensíveis como Estoque, Ficha Técnica e Senhas. 
               Configure-a para exportar/importar dados criptografados desses módulos.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Backup do Sistema */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Download className="h-5 w-5" />
+            Backup do Sistema
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Exporte todos os seus dados em um único arquivo criptografado ou importe um backup anterior.
+          </p>
+          <div className="flex gap-2">
+            <Button onClick={handleExportAllData} className="flex-1">
+              <Download className="h-4 w-4 mr-2" />
+              Exportar Todos os Dados
+            </Button>
+            <Button variant="outline" className="flex-1" asChild>
+              <label className="cursor-pointer flex items-center justify-center">
+                <Upload className="h-4 w-4 mr-2" />
+                Importar Dados
+                <input
+                  type="file"
+                  accept=".txt"
+                  onChange={handleImportAllData}
+                  className="hidden"
+                />
+              </label>
+            </Button>
+          </div>
+          <div className="p-3 border rounded bg-muted/50">
+            <p className="text-xs text-muted-foreground">
+              ⚠️ <strong>Importante:</strong> O arquivo de backup contém TODOS os seus dados criptografados com sua Senha Mestra. 
+              Mantenha-o em local seguro e nunca compartilhe.
             </p>
           </div>
         </CardContent>

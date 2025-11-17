@@ -6,9 +6,8 @@ import { Label } from './ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { Package, Plus, Pencil, Trash2, Download, Upload } from 'lucide-react';
+import { Package, Plus, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import CryptoJS from 'crypto-js';
 
 export const Stock = () => {
   const { state, addStockMaterial, updateStockMaterial, deleteStockMaterial } = useApp();
@@ -73,60 +72,9 @@ export const Stock = () => {
     setPrecoPago('');
   };
 
-  const handleExport = () => {
-    const masterPassword = localStorage.getItem('masterPassword');
-    if (!masterPassword) {
-      toast.error('Configure a Senha Mestra primeiro nas Configurações');
-      return;
-    }
-
-    const encrypted = CryptoJS.AES.encrypt(
-      JSON.stringify(state.stockMaterials),
-      masterPassword
-    ).toString();
-
-    const blob = new Blob([encrypted], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `estoque-${new Date().toISOString().split('T')[0]}.enc`;
-    a.click();
-    toast.success('Estoque exportado com sucesso!');
-  };
-
-  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const masterPassword = localStorage.getItem('masterPassword');
-    if (!masterPassword) {
-      toast.error('Configure a Senha Mestra primeiro nas Configurações');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const encrypted = e.target?.result as string;
-        const decrypted = CryptoJS.AES.decrypt(encrypted, masterPassword).toString(CryptoJS.enc.Utf8);
-        const materials = JSON.parse(decrypted);
-        
-        // Importar materiais
-        materials.forEach((material: any) => {
-          addStockMaterial({
-            nomeMaterial: material.nomeMaterial,
-            qtdEmbalagem: material.qtdEmbalagem,
-            unidadeEmbalagem: material.unidadeEmbalagem,
-            precoPago: material.precoPago,
-          });
-        });
-        
-        toast.success('Estoque importado com sucesso!');
-      } catch (error) {
-        toast.error('Erro ao importar: senha incorreta ou arquivo corrompido');
-      }
-    };
-    reader.readAsText(file);
+  const handleNew = () => {
+    resetForm();
+    setIsDialogOpen(true);
   };
 
   return (
@@ -136,117 +84,92 @@ export const Stock = () => {
           <Package className="h-8 w-8" />
           Estoque de Materiais
         </h1>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Exportar
-          </Button>
-          <Label htmlFor="import-stock" className="cursor-pointer">
-            <Button variant="outline" size="sm" asChild>
-              <span>
-                <Upload className="h-4 w-4 mr-2" />
-                Importar
-              </span>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) resetForm();
+        }}>
+          <DialogTrigger asChild>
+            <Button onClick={handleNew}>
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Material
             </Button>
-            <Input
-              id="import-stock"
-              type="file"
-              accept=".enc"
-              className="hidden"
-              onChange={handleImport}
-            />
-          </Label>
-          <Dialog open={isDialogOpen} onOpenChange={(open) => {
-            setIsDialogOpen(open);
-            if (!open) resetForm();
-          }}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Material
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>
-                  {editingId ? 'Editar Material' : 'Novo Material'}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {editingId ? 'Editar Material' : 'Novo Material'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Nome do Material *</Label>
+                <Input
+                  value={nomeMaterial}
+                  onChange={(e) => setNomeMaterial(e.target.value)}
+                  placeholder="Ex: Linha Amigurumi Círculo"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Nome do Material *</Label>
-                  <Input
-                    value={nomeMaterial}
-                    onChange={(e) => setNomeMaterial(e.target.value)}
-                    placeholder="Ex: Linha Amigurumi Círculo"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Quantidade da Embalagem *</Label>
-                    <Input
-                      type="number"
-                      value={qtdEmbalagem}
-                      onChange={(e) => setQtdEmbalagem(e.target.value)}
-                      placeholder="Ex: 100"
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
-                  <div>
-                    <Label>Unidade *</Label>
-                    <Input
-                      value={unidadeEmbalagem}
-                      onChange={(e) => setUnidadeEmbalagem(e.target.value)}
-                      placeholder="Ex: g, ml, un"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label>Preço Pago (R$) *</Label>
+                  <Label>Quantidade na Embalagem *</Label>
                   <Input
                     type="number"
-                    value={precoPago}
-                    onChange={(e) => setPrecoPago(e.target.value)}
-                    placeholder="Ex: 15.00"
-                    min="0"
                     step="0.01"
+                    value={qtdEmbalagem}
+                    onChange={(e) => setQtdEmbalagem(e.target.value)}
+                    placeholder="Ex: 100"
                   />
                 </div>
-                {qtdEmbalagem && precoPago && (
-                  <div className="bg-muted p-3 rounded-lg">
-                    <p className="text-sm font-medium">Custo Unitário Calculado:</p>
-                    <p className="text-2xl font-bold text-primary">
-                      R$ {(parseFloat(precoPago) / parseFloat(qtdEmbalagem)).toFixed(4)} / {unidadeEmbalagem}
-                    </p>
-                  </div>
-                )}
-                <Button onClick={handleSubmit} className="w-full">
-                  {editingId ? 'Atualizar' : 'Adicionar'} Material
-                </Button>
+                <div>
+                  <Label>Unidade *</Label>
+                  <Input
+                    value={unidadeEmbalagem}
+                    onChange={(e) => setUnidadeEmbalagem(e.target.value)}
+                    placeholder="Ex: g, ml, un"
+                  />
+                </div>
               </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+              <div>
+                <Label>Preço Pago (R$) *</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={precoPago}
+                  onChange={(e) => setPrecoPago(e.target.value)}
+                  placeholder="Ex: 15.00"
+                />
+              </div>
+              {qtdEmbalagem && precoPago && (
+                <div className="p-3 bg-muted rounded">
+                  <p className="text-sm font-medium">
+                    Custo Unitário: R$ {(parseFloat(precoPago) / parseFloat(qtdEmbalagem)).toFixed(4)} / {unidadeEmbalagem}
+                  </p>
+                </div>
+              )}
+              <Button onClick={handleSubmit} className="w-full">
+                {editingId ? 'Atualizar' : 'Adicionar'} Material
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Materiais em Estoque</CardTitle>
+          <CardTitle>Materiais Cadastrados</CardTitle>
         </CardHeader>
         <CardContent>
           {state.stockMaterials.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Package className="h-16 w-16 mx-auto mb-4 opacity-20" />
-              <p>Nenhum material cadastrado ainda</p>
-              <p className="text-sm mt-2">Adicione seu primeiro material para começar</p>
-            </div>
+            <p className="text-muted-foreground text-center py-8">
+              Nenhum material cadastrado ainda.
+            </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Material</TableHead>
-                  <TableHead>Embalagem</TableHead>
+                  <TableHead>Qtd. Embalagem</TableHead>
+                  <TableHead>Unidade</TableHead>
                   <TableHead>Preço Pago</TableHead>
                   <TableHead>Custo Unitário</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -256,28 +179,25 @@ export const Stock = () => {
                 {state.stockMaterials.map((material) => (
                   <TableRow key={material.id}>
                     <TableCell className="font-medium">{material.nomeMaterial}</TableCell>
-                    <TableCell>
-                      {material.qtdEmbalagem} {material.unidadeEmbalagem}
-                    </TableCell>
+                    <TableCell>{material.qtdEmbalagem}</TableCell>
+                    <TableCell>{material.unidadeEmbalagem}</TableCell>
                     <TableCell>R$ {material.precoPago.toFixed(2)}</TableCell>
-                    <TableCell className="font-bold text-primary">
-                      R$ {material.custoUnitario.toFixed(4)} / {material.unidadeEmbalagem}
-                    </TableCell>
+                    <TableCell>R$ {material.custoUnitario.toFixed(4)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button
-                          variant="ghost"
                           size="icon"
+                          variant="ghost"
                           onClick={() => handleEdit(material.id)}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
-                          variant="ghost"
                           size="icon"
+                          variant="ghost"
                           onClick={() => handleDelete(material.id)}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
                     </TableCell>
@@ -289,9 +209,10 @@ export const Stock = () => {
         </CardContent>
       </Card>
 
-      <div className="bg-card rounded-lg border p-6">
-        <p className="text-sm text-muted-foreground text-center">
-          ⚠️ <strong>Módulo Sensível:</strong> Os dados do estoque são protegidos pela Senha Mestra.
+      <div className="p-4 border rounded bg-muted/50">
+        <p className="text-sm text-muted-foreground">
+          ⚠️ <strong>Dados Sensíveis:</strong> Informações de custos são criptografadas e protegidas pela Senha Mestra. 
+          Para fazer backup, use <strong>Backup do Sistema</strong> em Configurações.
         </p>
       </div>
     </div>
