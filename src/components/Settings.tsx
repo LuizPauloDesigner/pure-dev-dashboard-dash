@@ -376,35 +376,46 @@ export const Settings = () => {
   };
 
   const handleExportAllData = () => {
-    const masterPassword = localStorage.getItem('masterPassword');
-    if (!masterPassword) {
-      toast.error('Configure a Senha Mestra primeiro');
-      return;
-    }
-
     try {
-      const dataToExport = {
-        version: '1.0',
+      // Coletar TODOS os dados de todos os módulos
+      const allData = {
+        version: '2.0',
         exportedAt: new Date().toISOString(),
-        data: state
+        appState: state,
+        musicPlaylists: JSON.parse(localStorage.getItem('musicPlaylists') || '[]'),
+        theme: localStorage.getItem('theme') || 'dark',
+        currentProject: localStorage.getItem('currentProject') || 'default',
+        miniPlayerVisible: localStorage.getItem('mini-player-visible') !== 'false',
       };
 
-      const encrypted = CryptoJS.AES.encrypt(
-        JSON.stringify(dataToExport),
-        masterPassword
-      ).toString();
+      const masterPassword = localStorage.getItem('masterPassword');
+      let exportContent: string;
+      let fileName: string;
 
-      const blob = new Blob([encrypted], { type: 'text/plain' });
+      if (masterPassword) {
+        // Exportar criptografado
+        exportContent = CryptoJS.AES.encrypt(
+          JSON.stringify(allData),
+          masterPassword
+        ).toString();
+        fileName = `backup-completo-${new Date().toISOString().split('T')[0]}.enc`;
+      } else {
+        // Exportar em JSON puro
+        exportContent = JSON.stringify(allData, null, 2);
+        fileName = `backup-completo-${new Date().toISOString().split('T')[0]}.json`;
+      }
+
+      const blob = new Blob([exportContent], { type: masterPassword ? 'text/plain' : 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `backup-completo-${new Date().toISOString().split('T')[0]}.txt`;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      toast.success('Backup criado com sucesso!');
+      toast.success(`Backup criado! ${masterPassword ? '(Criptografado)' : '(JSON)'}`);
     } catch (error) {
       toast.error('Erro ao exportar dados');
       console.error(error);
@@ -412,43 +423,64 @@ export const Settings = () => {
   };
 
   const handleImportAllData = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const masterPassword = localStorage.getItem('masterPassword');
-    if (!masterPassword) {
-      toast.error('Configure a Senha Mestra primeiro');
-      return;
-    }
-
     const file = event.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const encrypted = e.target?.result as string;
-        const decrypted = CryptoJS.AES.decrypt(encrypted, masterPassword).toString(CryptoJS.enc.Utf8);
-        
-        if (!decrypted) {
-          toast.error('Senha incorreta ou arquivo inválido');
-          return;
+        const fileContent = e.target?.result as string;
+        let importedData;
+
+        // Tentar primeiro como JSON puro
+        try {
+          importedData = JSON.parse(fileContent);
+        } catch {
+          // Se falhar, tentar descriptografar
+          const masterPassword = localStorage.getItem('masterPassword');
+          if (!masterPassword) {
+            toast.error('Arquivo criptografado detectado. Configure a Senha Mestra primeiro.');
+            return;
+          }
+          
+          const decrypted = CryptoJS.AES.decrypt(fileContent, masterPassword).toString(CryptoJS.enc.Utf8);
+          if (!decrypted) {
+            toast.error('Senha incorreta ou arquivo inválido');
+            return;
+          }
+          importedData = JSON.parse(decrypted);
         }
 
-        const imported = JSON.parse(decrypted);
-        
-        // Mesclar dados importados com o estado atual
-        Object.keys(imported.data).forEach((key) => {
-          if (imported.data[key] !== undefined) {
-            localStorage.setItem(key, JSON.stringify(imported.data[key]));
+        // Verificar versão e estrutura
+        if (!importedData.version || !importedData.appState) {
+          // Formato antigo (v1.0)
+          if (importedData.data) {
+            localStorage.setItem('devCommandCenter', JSON.stringify(importedData.data));
+          } else {
+            localStorage.setItem('devCommandCenter', JSON.stringify(importedData));
           }
-        });
+        } else {
+          // Formato novo (v2.0) - restaurar todos os dados
+          localStorage.setItem('devCommandCenter', JSON.stringify(importedData.appState));
+          
+          if (importedData.musicPlaylists) {
+            localStorage.setItem('musicPlaylists', JSON.stringify(importedData.musicPlaylists));
+          }
+          if (importedData.theme) {
+            localStorage.setItem('theme', importedData.theme);
+          }
+          if (importedData.currentProject) {
+            localStorage.setItem('currentProject', importedData.currentProject);
+          }
+          if (importedData.miniPlayerVisible !== undefined) {
+            localStorage.setItem('mini-player-visible', importedData.miniPlayerVisible.toString());
+          }
+        }
 
         toast.success('Dados importados! Recarregando...');
-        
-        // Recarregar após 1.5 segundos
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
+        setTimeout(() => window.location.reload(), 1500);
       } catch (error) {
-        toast.error('Erro ao importar dados. Verifique o arquivo e a senha.');
+        toast.error('Erro ao importar dados. Verifique o arquivo.');
         console.error(error);
       }
     };
@@ -651,8 +683,24 @@ export const Settings = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Exporte todos os seus dados em um único arquivo criptografado ou importe um backup anterior.
+            Exporte <strong>todos os dados de todos os módulos</strong> em um único arquivo. Se você tiver uma Senha Mestra configurada, o arquivo será criptografado automaticamente.
           </p>
+          <div className="p-3 border rounded bg-muted/50 space-y-2">
+            <p className="text-xs text-muted-foreground">
+              <strong>📦 Dados incluídos no backup:</strong>
+            </p>
+            <ul className="text-xs text-muted-foreground list-disc list-inside space-y-1">
+              <li>Notas, Prompts, Snippets, Cheatsheet</li>
+              <li>Kanban, Checklists, Favoritos</li>
+              <li>Senhas, Contatos (criptografados)</li>
+              <li>Finanças, Orçamentos, Precificador</li>
+              <li>Estoque, Fichas Técnicas</li>
+              <li>Diário, Rascunho</li>
+              <li>Playlists de música</li>
+              <li>Estatísticas Pomodoro/Wellness</li>
+              <li>Configurações e preferências</li>
+            </ul>
+          </div>
           <div className="flex gap-2">
             <Button onClick={handleExportAllData} className="flex-1">
               <Download className="h-4 w-4 mr-2" />
@@ -664,17 +712,18 @@ export const Settings = () => {
                 Importar Dados
                 <input
                   type="file"
-                  accept=".txt"
+                  accept=".json,.enc,.txt"
                   onChange={handleImportAllData}
                   className="hidden"
                 />
               </label>
             </Button>
           </div>
-          <div className="p-3 border rounded bg-muted/50">
+          <div className="p-3 border rounded bg-yellow-500/10 border-yellow-500/30">
             <p className="text-xs text-muted-foreground">
-              ⚠️ <strong>Importante:</strong> O arquivo de backup contém TODOS os seus dados criptografados com sua Senha Mestra. 
-              Mantenha-o em local seguro e nunca compartilhe.
+              ⚠️ <strong>Importante:</strong> {hasMasterPassword 
+                ? 'Seu backup será criptografado com a Senha Mestra. Mantenha-o em local seguro.' 
+                : 'Configure uma Senha Mestra para criptografar seus backups automaticamente.'}
             </p>
           </div>
         </CardContent>
