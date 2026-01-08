@@ -695,6 +695,7 @@ export const Settings = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {[
               { id: 'dashboard', label: 'Dashboard', protected: true },
+              { id: 'tutorial', label: 'Tutorial', protected: true },
               { id: 'wellness', label: 'Bem-Estar', protected: false },
               { id: 'musica', label: 'Biblioteca de Músicas', protected: false },
               { id: 'favorites', label: 'Favoritos', protected: false },
