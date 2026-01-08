@@ -24,6 +24,7 @@ import { Pricing } from '@/components/Pricing';
 import { Stock } from '@/components/Stock';
 import { TechSheet } from '@/components/TechSheet';
 import { CommandPalette } from '@/components/CommandPalette';
+import Tutorial from '@/components/Tutorial';
 import { cn } from '@/lib/utils';
 import React from 'react';
 
@@ -40,6 +41,7 @@ const MainContent = () => {
   return (
     <main className="container py-6">
       {currentTab === 'dashboard' && <Dashboard />}
+      {currentTab === 'tutorial' && <Tutorial />}
       {currentTab === 'favorites' && <Favorites />}
       {currentTab === 'notes' && <Notes />}
       {currentTab === 'prompts' && <Prompts />}

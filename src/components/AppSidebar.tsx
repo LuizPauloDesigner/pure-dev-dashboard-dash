@@ -33,6 +33,7 @@ import {
   LucideIcon,
   Package,
   FileSpreadsheet,
+  HelpCircle,
 } from 'lucide-react';
 
 interface MenuItem {
@@ -43,6 +44,7 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'tutorial', label: 'Tutorial', icon: HelpCircle },
   { id: 'wellness', label: 'Bem-Estar', icon: Heart },
   { id: 'musica', label: 'Biblioteca de Músicas', icon: Music },
   { id: 'favorites', label: 'Favoritos', icon: Star },
