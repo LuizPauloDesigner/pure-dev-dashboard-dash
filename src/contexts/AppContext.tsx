@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo, useRef } from 'react';
 
 export interface Project {
   id: string;
@@ -520,9 +520,31 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     if (savedProject) setCurrentProject(savedProject);
   }, []);
 
-  // Save state to localStorage
+  // Save state to localStorage with debounce for better performance
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const isInitialMount = useRef(true);
+  
   useEffect(() => {
-    localStorage.setItem('devCommandCenter', JSON.stringify(state));
+    // Skip saving on initial mount (we just loaded from localStorage)
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    
+    // Debounce localStorage writes to avoid performance issues
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    saveTimeoutRef.current = setTimeout(() => {
+      localStorage.setItem('devCommandCenter', JSON.stringify(state));
+    }, 500); // 500ms debounce
+    
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
   }, [state]);
 
   // Check for recurring tasks
@@ -1240,93 +1262,94 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
+  // Memoize the context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    state,
+    currentProject,
+    setCurrentProject,
+    currentTab,
+    setCurrentTab,
+    theme,
+    toggleTheme,
+    addProject,
+    updateProject,
+    deleteProject,
+    addNote,
+    updateNote,
+    deleteNote,
+    addPrompt,
+    updatePrompt,
+    deletePrompt,
+    addSnippet,
+    updateSnippet,
+    deleteSnippet,
+    addCheatsheetItem,
+    updateCheatsheetItem,
+    deleteCheatsheetItem,
+    addKanbanTask,
+    updateKanbanTask,
+    deleteKanbanTask,
+    addPassword,
+    updatePassword,
+    deletePassword,
+    addBookmark,
+    updateBookmark,
+    deleteBookmark,
+    addDiaryEntry,
+    updateDiaryEntry,
+    updateDraft,
+    updatePomodoroStats,
+    addWellnessBreak,
+    addGamificationPoints,
+    unlockBadge,
+    updateFocusDurations,
+    searchQuery,
+    setSearchQuery,
+    addFinancialAccount,
+    updateFinancialAccount,
+    deleteFinancialAccount,
+    addFinancialCategory,
+    updateFinancialCategory,
+    deleteFinancialCategory,
+    addFinancialBudget,
+    updateFinancialBudget,
+    deleteFinancialBudget,
+    addFinancialTransaction,
+    updateFinancialTransaction,
+    deleteFinancialTransaction,
+    setMusicPlayerVolume,
+    setMusicPlayerShuffle,
+    setMusicPlayerRepeat,
+    addContact,
+    updateContact,
+    deleteContact,
+    addContactTag,
+    deleteContactTag,
+    addChecklist,
+    updateChecklist,
+    deleteChecklist,
+    addChecklistItem,
+    updateChecklistItem,
+    deleteChecklistItem,
+    updateBillingInfo,
+    addServiceCatalogItem,
+    updateServiceCatalogItem,
+    deleteServiceCatalogItem,
+    addBudget,
+    updateBudget,
+    deleteBudget,
+    updatePricingData,
+    addStockMaterial,
+    updateStockMaterial,
+    deleteStockMaterial,
+    addTechSheet,
+    updateTechSheet,
+    deleteTechSheet,
+    toggleModule,
+  }), [state, currentProject, currentTab, theme, searchQuery]);
+
   return (
-    <AppContext.Provider
-      value={{
-        state,
-        currentProject,
-        setCurrentProject,
-        currentTab,
-        setCurrentTab,
-        theme,
-        toggleTheme,
-        addProject,
-        updateProject,
-        deleteProject,
-        addNote,
-        updateNote,
-        deleteNote,
-        addPrompt,
-        updatePrompt,
-        deletePrompt,
-        addSnippet,
-        updateSnippet,
-        deleteSnippet,
-        addCheatsheetItem,
-        updateCheatsheetItem,
-        deleteCheatsheetItem,
-        addKanbanTask,
-        updateKanbanTask,
-        deleteKanbanTask,
-        addPassword,
-        updatePassword,
-        deletePassword,
-        addBookmark,
-        updateBookmark,
-        deleteBookmark,
-        addDiaryEntry,
-        updateDiaryEntry,
-        updateDraft,
-        updatePomodoroStats,
-        addWellnessBreak,
-        addGamificationPoints,
-        unlockBadge,
-        updateFocusDurations,
-        searchQuery,
-        setSearchQuery,
-        addFinancialAccount,
-        updateFinancialAccount,
-        deleteFinancialAccount,
-        addFinancialCategory,
-        updateFinancialCategory,
-        deleteFinancialCategory,
-        addFinancialBudget,
-        updateFinancialBudget,
-        deleteFinancialBudget,
-        addFinancialTransaction,
-        updateFinancialTransaction,
-        deleteFinancialTransaction,
-        setMusicPlayerVolume,
-        setMusicPlayerShuffle,
-        setMusicPlayerRepeat,
-        addContact,
-        updateContact,
-        deleteContact,
-        addContactTag,
-        deleteContactTag,
-        addChecklist,
-        updateChecklist,
-        deleteChecklist,
-        addChecklistItem,
-        updateChecklistItem,
-        deleteChecklistItem,
-        updateBillingInfo,
-        addServiceCatalogItem,
-        updateServiceCatalogItem,
-        deleteServiceCatalogItem,
-      addBudget,
-      updateBudget,
-      deleteBudget,
-      updatePricingData,
-      addStockMaterial,
-      updateStockMaterial,
-      deleteStockMaterial,
-      addTechSheet,
-      updateTechSheet,
-      deleteTechSheet,
-      toggleModule,
-    }}
-    >
+    <AppContext.Provider value={contextValue}>
       {children}
     </AppContext.Provider>
   );

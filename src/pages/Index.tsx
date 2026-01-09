@@ -3,86 +3,109 @@ import { Navbar } from '@/components/Navbar';
 import { MusicPlayerBar } from '@/components/MusicPlayerBar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
-import { Dashboard } from '@/components/Dashboard';
-import { Notes } from '@/components/Notes';
-import { Prompts } from '@/components/Prompts';
-import { Snippets } from '@/components/Snippets';
-import { Cheatsheet } from '@/components/Cheatsheet';
-import { Kanban } from '@/components/Kanban';
-import { Passwords } from '@/components/Passwords';
-import { Contacts } from '@/components/Contacts';
-import { Checklists } from '@/components/Checklists';
-import { Finance } from '@/components/Finance';
-import { Diary } from '@/components/Diary';
-import { Draft } from '@/components/Draft';
-import { Favorites } from '@/components/Favorites';
-import { Wellness } from '@/components/Wellness';
-import { Settings } from '@/components/Settings';
-import { MusicPlayer } from '@/components/MusicPlayer';
-import { Budgets } from '@/components/Budgets';
-import { Pricing } from '@/components/Pricing';
-import { Stock } from '@/components/Stock';
-import { TechSheet } from '@/components/TechSheet';
 import { CommandPalette } from '@/components/CommandPalette';
-import Tutorial from '@/components/Tutorial';
 import { cn } from '@/lib/utils';
-import React from 'react';
+import React, { Suspense, lazy, memo, useEffect, useState, useMemo } from 'react';
 
-const MainContent = () => {
+// Lazy load all components for better performance
+const Dashboard = lazy(() => import('@/components/Dashboard').then(m => ({ default: m.Dashboard })));
+const Notes = lazy(() => import('@/components/Notes').then(m => ({ default: m.Notes })));
+const Prompts = lazy(() => import('@/components/Prompts').then(m => ({ default: m.Prompts })));
+const Snippets = lazy(() => import('@/components/Snippets').then(m => ({ default: m.Snippets })));
+const Cheatsheet = lazy(() => import('@/components/Cheatsheet').then(m => ({ default: m.Cheatsheet })));
+const Kanban = lazy(() => import('@/components/Kanban').then(m => ({ default: m.Kanban })));
+const Passwords = lazy(() => import('@/components/Passwords').then(m => ({ default: m.Passwords })));
+const Contacts = lazy(() => import('@/components/Contacts').then(m => ({ default: m.Contacts })));
+const Checklists = lazy(() => import('@/components/Checklists').then(m => ({ default: m.Checklists })));
+const Finance = lazy(() => import('@/components/Finance').then(m => ({ default: m.Finance })));
+const Diary = lazy(() => import('@/components/Diary').then(m => ({ default: m.Diary })));
+const Draft = lazy(() => import('@/components/Draft').then(m => ({ default: m.Draft })));
+const Favorites = lazy(() => import('@/components/Favorites').then(m => ({ default: m.Favorites })));
+const Wellness = lazy(() => import('@/components/Wellness').then(m => ({ default: m.Wellness })));
+const Settings = lazy(() => import('@/components/Settings').then(m => ({ default: m.Settings })));
+const MusicPlayer = lazy(() => import('@/components/MusicPlayer').then(m => ({ default: m.MusicPlayer })));
+const Budgets = lazy(() => import('@/components/Budgets').then(m => ({ default: m.Budgets })));
+const Pricing = lazy(() => import('@/components/Pricing').then(m => ({ default: m.Pricing })));
+const Stock = lazy(() => import('@/components/Stock').then(m => ({ default: m.Stock })));
+const TechSheet = lazy(() => import('@/components/TechSheet').then(m => ({ default: m.TechSheet })));
+const Tutorial = lazy(() => import('@/components/Tutorial'));
+
+// Loading fallback component
+const LoadingFallback = memo(() => (
+  <div className="flex items-center justify-center py-12">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+  </div>
+));
+LoadingFallback.displayName = 'LoadingFallback';
+
+// Component map for cleaner rendering
+const COMPONENT_MAP: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
+  dashboard: Dashboard,
+  tutorial: Tutorial,
+  favorites: Favorites,
+  notes: Notes,
+  prompts: Prompts,
+  snippets: Snippets,
+  cheatsheet: Cheatsheet,
+  kanban: Kanban,
+  checklists: Checklists,
+  passwords: Passwords,
+  contacts: Contacts,
+  orcamentos: Budgets,
+  precificador: Pricing,
+  estoque: Stock,
+  fichatecnica: TechSheet,
+  finance: Finance,
+  diary: Diary,
+  wellness: Wellness,
+  musica: MusicPlayer,
+  draft: Draft,
+  settings: Settings,
+};
+
+const MainContent = memo(() => {
   const { currentTab, state, setCurrentTab } = useApp();
 
-  // Redirecionar para dashboard se o módulo atual estiver desabilitado
-  React.useEffect(() => {
+  // Redirect to dashboard if module is disabled
+  useEffect(() => {
     if (!state.enabledModules.includes(currentTab)) {
       setCurrentTab('dashboard');
     }
   }, [currentTab, state.enabledModules, setCurrentTab]);
 
+  const Component = useMemo(() => COMPONENT_MAP[currentTab], [currentTab]);
+
+  if (!Component) {
+    return <Dashboard />;
+  }
+
   return (
     <main className="container py-6">
-      {currentTab === 'dashboard' && <Dashboard />}
-      {currentTab === 'tutorial' && <Tutorial />}
-      {currentTab === 'favorites' && <Favorites />}
-      {currentTab === 'notes' && <Notes />}
-      {currentTab === 'prompts' && <Prompts />}
-      {currentTab === 'snippets' && <Snippets />}
-      {currentTab === 'cheatsheet' && <Cheatsheet />}
-      {currentTab === 'kanban' && <Kanban />}
-      {currentTab === 'checklists' && <Checklists />}
-      {currentTab === 'passwords' && <Passwords />}
-      {currentTab === 'contacts' && <Contacts />}
-      {currentTab === 'orcamentos' && <Budgets />}
-      {currentTab === 'precificador' && <Pricing />}
-      {currentTab === 'estoque' && <Stock />}
-      {currentTab === 'fichatecnica' && <TechSheet />}
-      {currentTab === 'finance' && <Finance />}
-      {currentTab === 'diary' && <Diary />}
-      {currentTab === 'wellness' && <Wellness />}
-      {currentTab === 'musica' && <MusicPlayer />}
-      {currentTab === 'draft' && <Draft />}
-      {currentTab === 'settings' && <Settings />}
+      <Suspense fallback={<LoadingFallback />}>
+        <Component />
+      </Suspense>
     </main>
   );
-};
+});
+MainContent.displayName = 'MainContent';
 
 const Index = () => {
-  const [isPlayerVisible, setIsPlayerVisible] = React.useState(() => {
+  const [isPlayerVisible, setIsPlayerVisible] = useState(() => {
     const saved = localStorage.getItem('mini-player-visible');
     return saved !== 'false';
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
     const checkVisibility = () => {
       const saved = localStorage.getItem('mini-player-visible');
       setIsPlayerVisible(saved !== 'false');
     };
     
+    // Listen only to storage events (from other tabs)
     window.addEventListener('storage', checkVisibility);
-    const interval = setInterval(checkVisibility, 100);
     
     return () => {
       window.removeEventListener('storage', checkVisibility);
-      clearInterval(interval);
     };
   }, []);
 

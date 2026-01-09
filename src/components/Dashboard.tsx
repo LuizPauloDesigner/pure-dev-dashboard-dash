@@ -1,160 +1,106 @@
 import { useApp } from '@/contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { CheckCircle2, FileText, Code, Timer, Heart, TrendingUp } from 'lucide-react';
-import { Line } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
+import { CheckCircle2, FileText, Code, Timer, TrendingUp } from 'lucide-react';
+import { memo, lazy, Suspense, useMemo } from 'react';
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend
+// Lazy load Chart.js components (heavy library)
+const DashboardChart = lazy(() => import('./DashboardChart'));
+
+// Loading fallback for chart
+const ChartLoading = () => (
+  <div className="flex items-center justify-center h-[250px]">
+    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+  </div>
 );
 
-export const Dashboard = () => {
+export const Dashboard = memo(() => {
   const { state, currentProject } = useApp();
 
-  // Calcular últimos 7 dias
-  const last7Days = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date();
-    date.setDate(date.getDate() - (6 - i));
-    return date.toISOString().split('T')[0];
-  });
-
-  const last7DaysLabels = last7Days.map(date => {
-    const d = new Date(date);
-    return d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' });
-  });
-
-  const inProgressTasks = state.kanban.filter(
-    task => task.projectId === currentProject && task.column === 'inProgress'
-  );
-
-  const recentNotes = state.notes
-    .filter(note => note.projectId === currentProject)
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    .slice(0, 3);
-
-  const recentSnippets = state.snippets
-    .filter(snippet => snippet.projectId === currentProject)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 3);
-
-  // Filtrar dados dos últimos 7 dias
-  const last7DaysBreaks = state.wellnessStats.breaks.filter(b => {
-    const breakDate = new Date(b.dataHora).toISOString().split('T')[0];
-    return last7Days.includes(breakDate);
-  });
-
-  const last7DaysDiary = state.diary.filter(entry => {
-    return entry.projetoId === currentProject && last7Days.includes(entry.date);
-  });
-
-  // KPIs últimos 7 dias
-  const totalBreaks = last7DaysBreaks.length;
-  const completedBreaks = last7DaysBreaks.filter(b => b.adesaoStatus === 'Concluida').length;
-  const adherenceRate = totalBreaks > 0 ? Math.round((completedBreaks / totalBreaks) * 100) : 0;
-
-  const moodScores = last7DaysDiary.map(e => e.moodScore).filter(m => m !== null && m !== undefined) as number[];
-  const avgMoodNum = moodScores.length > 0 
-    ? moodScores.reduce((acc, val) => acc + val, 0) / moodScores.length
-    : null;
-  const avgMood = avgMoodNum ? avgMoodNum.toFixed(1) : null;
-
-  const moodEmoji = avgMoodNum 
-    ? avgMoodNum >= 4.5 ? '🤩' : avgMoodNum >= 3.5 ? '😁' : avgMoodNum >= 2.5 ? '🙂' : avgMoodNum >= 1.5 ? '😐' : '😞'
-    : null;
-
-  // Dados para o gráfico (por dia) - usando breaks como proxy de ciclos de foco
-  const dailyFocusCycles = last7Days.map(date => {
-    const dayBreaks = last7DaysBreaks.filter(b => {
-      const breakDate = new Date(b.dataHora).toISOString().split('T')[0];
-      return breakDate === date;
+  // Memoize expensive calculations
+  const { last7Days, last7DaysLabels } = useMemo(() => {
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (6 - i));
+      return date.toISOString().split('T')[0];
     });
-    return dayBreaks.length;
-  });
+    
+    const labels = days.map(date => {
+      const d = new Date(date);
+      return d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' });
+    });
+    
+    return { last7Days: days, last7DaysLabels: labels };
+  }, []);
 
-  const dailyMoodAvg = last7Days.map(date => {
-    const dayEntries = last7DaysDiary.filter(e => e.date === date);
-    const dayMoods = dayEntries.map(e => e.moodScore).filter(m => m !== null && m !== undefined) as number[];
-    return dayMoods.length > 0 ? dayMoods.reduce((acc, val) => acc + val, 0) / dayMoods.length : null;
-  });
+  const inProgressTasks = useMemo(() => 
+    state.kanban.filter(
+      task => task.projectId === currentProject && task.column === 'inProgress'
+    ), [state.kanban, currentProject]);
 
-  const hasData = moodScores.length > 0 || totalBreaks > 0;
+  const recentNotes = useMemo(() => 
+    state.notes
+      .filter(note => note.projectId === currentProject)
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      .slice(0, 3), [state.notes, currentProject]);
 
-  const chartData = {
-    labels: last7DaysLabels,
-    datasets: [
-      {
-        label: 'Ciclos de Foco',
-        data: dailyFocusCycles,
-        borderColor: 'rgb(59, 130, 246)',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-        yAxisID: 'y',
-        tension: 0.3,
-      },
-      {
-        label: 'Humor Médio',
-        data: dailyMoodAvg,
-        borderColor: 'rgb(34, 197, 94)',
-        backgroundColor: 'rgba(34, 197, 94, 0.1)',
-        yAxisID: 'y1',
-        tension: 0.3,
-      },
-    ],
-  };
+  // Memoize wellness calculations
+  const wellnessData = useMemo(() => {
+    const last7DaysBreaks = state.wellnessStats.breaks.filter(b => {
+      const breakDate = new Date(b.dataHora).toISOString().split('T')[0];
+      return last7Days.includes(breakDate);
+    });
 
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: {
-      mode: 'index' as const,
-      intersect: false,
-    },
-    plugins: {
-      legend: {
-        position: 'top' as const,
-      },
-    },
-    scales: {
-      y: {
-        type: 'linear' as const,
-        display: true,
-        position: 'left' as const,
-        title: {
-          display: true,
-          text: 'Ciclos de Foco',
-        },
-        beginAtZero: true,
-      },
-      y1: {
-        type: 'linear' as const,
-        display: true,
-        position: 'right' as const,
-        title: {
-          display: true,
-          text: 'Humor (1-5)',
-        },
-        min: 1,
-        max: 5,
-        grid: {
-          drawOnChartArea: false,
-        },
-      },
-    },
-  };
+    const last7DaysDiary = state.diary.filter(entry => {
+      return entry.projetoId === currentProject && last7Days.includes(entry.date);
+    });
+
+    const totalBreaks = last7DaysBreaks.length;
+    const completedBreaks = last7DaysBreaks.filter(b => b.adesaoStatus === 'Concluida').length;
+    const adherenceRate = totalBreaks > 0 ? Math.round((completedBreaks / totalBreaks) * 100) : 0;
+
+    const moodScores = last7DaysDiary.map(e => e.moodScore).filter(m => m !== null && m !== undefined) as number[];
+    const avgMoodNum = moodScores.length > 0 
+      ? moodScores.reduce((acc, val) => acc + val, 0) / moodScores.length
+      : null;
+    const avgMood = avgMoodNum ? avgMoodNum.toFixed(1) : null;
+
+    const moodEmoji = avgMoodNum 
+      ? avgMoodNum >= 4.5 ? '🤩' : avgMoodNum >= 3.5 ? '😁' : avgMoodNum >= 2.5 ? '🙂' : avgMoodNum >= 1.5 ? '😐' : '😞'
+      : null;
+
+    const dailyFocusCycles = last7Days.map(date => {
+      const dayBreaks = last7DaysBreaks.filter(b => {
+        const breakDate = new Date(b.dataHora).toISOString().split('T')[0];
+        return breakDate === date;
+      });
+      return dayBreaks.length;
+    });
+
+    const dailyMoodAvg = last7Days.map(date => {
+      const dayEntries = last7DaysDiary.filter(e => e.date === date);
+      const dayMoods = dayEntries.map(e => e.moodScore).filter(m => m !== null && m !== undefined) as number[];
+      return dayMoods.length > 0 ? dayMoods.reduce((acc, val) => acc + val, 0) / dayMoods.length : null;
+    });
+
+    const hasData = moodScores.length > 0 || totalBreaks > 0;
+
+    return {
+      adherenceRate,
+      avgMood,
+      moodEmoji,
+      dailyFocusCycles,
+      dailyMoodAvg,
+      hasData,
+    };
+  }, [state.wellnessStats.breaks, state.diary, last7Days, currentProject]);
+
+  const notesCount = useMemo(() => 
+    state.notes.filter(n => n.projectId === currentProject).length, 
+    [state.notes, currentProject]);
+
+  const snippetsCount = useMemo(() => 
+    state.snippets.filter(s => s.projectId === currentProject).length,
+    [state.snippets, currentProject]);
 
   return (
     <div className="space-y-6">
@@ -175,9 +121,7 @@ export const Dashboard = () => {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">
-              {state.notes.filter(n => n.projectId === currentProject).length}
-            </div>
+            <div className="text-2xl font-bold text-primary">{notesCount}</div>
           </CardContent>
         </Card>
 
@@ -187,9 +131,7 @@ export const Dashboard = () => {
             <Code className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">
-              {state.snippets.filter(s => s.projectId === currentProject).length}
-            </div>
+            <div className="text-2xl font-bold text-primary">{snippetsCount}</div>
           </CardContent>
         </Card>
 
@@ -213,7 +155,7 @@ export const Dashboard = () => {
         <CardContent>
           <p className="text-xs text-muted-foreground mb-4">Métricas dos últimos 7 dias</p>
           
-          {!hasData ? (
+          {!wellnessData.hasData ? (
             <div className="flex items-center justify-center py-8 text-center">
               <p className="text-sm text-muted-foreground">
                 Sem dados suficientes para análise na última semana.
@@ -225,15 +167,15 @@ export const Dashboard = () => {
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Taxa de Adesão</p>
                   <div className="text-2xl font-bold text-primary">
-                    {adherenceRate}%
+                    {wellnessData.adherenceRate}%
                   </div>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Média de Humor</p>
                   <div className="text-2xl font-bold text-primary flex items-center gap-2">
-                    {avgMood ? (
+                    {wellnessData.avgMood ? (
                       <>
-                        {avgMood} <span className="text-xl">{moodEmoji}</span>
+                        {wellnessData.avgMood} <span className="text-xl">{wellnessData.moodEmoji}</span>
                       </>
                     ) : (
                       'N/A'
@@ -250,9 +192,13 @@ export const Dashboard = () => {
 
               <div className="border-t pt-4">
                 <p className="text-sm font-medium mb-3">Correlação Produtividade x Bem-Estar</p>
-                <div style={{ height: '250px' }}>
-                  <Line data={chartData} options={chartOptions} />
-                </div>
+                <Suspense fallback={<ChartLoading />}>
+                  <DashboardChart 
+                    labels={last7DaysLabels}
+                    focusCycles={wellnessData.dailyFocusCycles}
+                    moodAvg={wellnessData.dailyMoodAvg}
+                  />
+                </Suspense>
               </div>
             </>
           )}
@@ -324,4 +270,6 @@ export const Dashboard = () => {
       </Card>
     </div>
   );
-};
+});
+
+Dashboard.displayName = 'Dashboard';
