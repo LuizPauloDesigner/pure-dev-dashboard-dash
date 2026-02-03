@@ -4,10 +4,31 @@ import { Trophy, Star, Zap, Play, Pause, Volume2, Brain, Heart, Settings as Sett
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
 import { useState, useRef } from 'react';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { toast } from 'sonner';
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 export const Wellness = () => {
   const { state, updateFocusDurations, addGamificationPoints } = useApp();
