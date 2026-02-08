@@ -1,9 +1,8 @@
-import { AppProvider, useApp } from '@/contexts/AppContext';
-import { Navbar } from '@/components/Navbar';
+import { useApp } from '@/contexts/AppContext';
+import { ExtensionNavbar } from '@/components/ExtensionNavbar';
 import { MusicPlayerBar } from '@/components/MusicPlayerBar';
-import { AppSidebar } from '@/components/AppSidebar';
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { CommandPalette } from '@/components/CommandPalette';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import React, { memo, useEffect, useState } from 'react';
 
@@ -68,9 +67,11 @@ const MainContent = memo(() => {
   const Component = COMPONENT_MAP[currentTab] || Dashboard;
 
   return (
-    <main className="container py-6">
-      <Component />
-    </main>
+    <ScrollArea className="flex-1">
+      <main className="p-3 extension-content">
+        <Component />
+      </main>
+    </ScrollArea>
   );
 });
 MainContent.displayName = 'MainContent';
@@ -87,7 +88,6 @@ const Index = () => {
       setIsPlayerVisible(saved !== 'false');
     };
     
-    // Listen only to storage events (from other tabs)
     window.addEventListener('storage', checkVisibility);
     
     return () => {
@@ -96,19 +96,19 @@ const Index = () => {
   }, []);
 
   return (
-    <AppProvider>
-      <SidebarProvider defaultOpen={true}>
-        <div className="min-h-screen flex w-full bg-background">
-          <MusicPlayerBar />
-          <AppSidebar />
-          <SidebarInset className={cn("flex-1", isPlayerVisible ? "pt-[70px]" : "pt-[25px]")}>
-            <Navbar />
-            <MainContent />
-          </SidebarInset>
-        </div>
-        <CommandPalette />
-      </SidebarProvider>
-    </AppProvider>
+    <div className="h-screen w-full flex flex-col bg-background overflow-hidden extension-container">
+      {/* Mini Player */}
+      {isPlayerVisible && <MusicPlayerBar />}
+      
+      {/* Extension Navbar */}
+      <ExtensionNavbar />
+      
+      {/* Main Content */}
+      <MainContent />
+      
+      {/* Command Palette */}
+      <CommandPalette />
+    </div>
   );
 };
 
