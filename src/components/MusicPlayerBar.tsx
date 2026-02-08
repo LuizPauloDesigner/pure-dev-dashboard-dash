@@ -59,28 +59,29 @@ export const MusicPlayerBar = () => {
 
   if (!isVisible) {
     return (
-      <div className="fixed top-0 left-0 right-0 z-[60] bg-[#1a1a1a] border-b border-primary/20 h-[25px]">
+      <div className="w-full bg-card border-b border-primary/20 h-[24px] flex-shrink-0">
         <button
           onClick={() => setIsVisible(true)}
           className="w-full h-full py-1 text-xs text-muted-foreground hover:text-primary transition-colors flex items-center justify-center gap-1"
         >
           <ChevronDown className="h-3 w-3" />
-          Mostrar Player
+          Player
         </button>
       </div>
     );
   }
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[60] bg-[#1a1a1a] border-b border-primary/20 shadow-lg">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center gap-4 h-[70px]">
+    <div className="w-full bg-card border-b border-primary/20 flex-shrink-0">
+      <div className="px-3 py-2">
+        {/* Compact layout for extension */}
+        <div className="flex items-center gap-2">
           {/* Album Art & Track Info */}
           <button
             onClick={() => setCurrentTab('musica')}
-            className="flex items-center gap-3 min-w-0 hover:opacity-80 transition-opacity"
+            className="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity flex-1"
           >
-            <div className="h-12 w-12 bg-primary/10 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
+            <div className="h-8 w-8 bg-primary/10 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
               {currentTrack?.artwork ? (
                 <img 
                   src={currentTrack.artwork} 
@@ -88,80 +89,50 @@ export const MusicPlayerBar = () => {
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <Music className="h-6 w-6 text-primary" />
+                <Music className="h-4 w-4 text-primary" />
               )}
             </div>
             <div className="min-w-0 text-left">
-              <p className="text-sm font-semibold text-foreground truncate max-w-[200px]">
+              <p className="text-xs font-medium text-foreground truncate max-w-[100px]">
                 {currentTrack?.title || 'Nenhuma música'}
               </p>
-              <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                {currentTrack?.artist || 'Selecione uma música'}
+              <p className="text-[10px] text-muted-foreground truncate max-w-[100px]">
+                {currentTrack?.artist || 'Selecione'}
               </p>
             </div>
           </button>
 
           {/* Controls */}
-          <div className="flex-1 flex flex-col items-center gap-2 max-w-2xl mx-auto">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={playPrevious}
-                className="h-8 w-8 hover:bg-primary/10"
-              >
-                <SkipBack className="h-4 w-4" />
-              </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={playPrevious}
+              className="h-7 w-7 hover:bg-primary/10"
+            >
+              <SkipBack className="h-3.5 w-3.5" />
+            </Button>
 
-              <Button
-                size="icon"
-                onClick={togglePlayPause}
-                className="h-10 w-10 bg-primary hover:bg-primary/90"
-              >
-                {isPlaying ? (
-                  <Pause className="h-5 w-5" />
-                ) : (
-                  <Play className="h-5 w-5 ml-0.5" />
-                )}
-              </Button>
+            <Button
+              size="icon"
+              onClick={togglePlayPause}
+              className="h-8 w-8 bg-primary hover:bg-primary/90"
+            >
+              {isPlaying ? (
+                <Pause className="h-4 w-4" />
+              ) : (
+                <Play className="h-4 w-4 ml-0.5" />
+              )}
+            </Button>
 
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={playNext}
-                className="h-8 w-8 hover:bg-primary/10"
-              >
-                <SkipForward className="h-4 w-4" />
-              </Button>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="w-full flex items-center gap-2">
-              <span className="text-xs text-muted-foreground w-10 text-right">
-                {formatTime(currentTime)}
-              </span>
-              <div className="flex-1 relative group">
-                <div className="h-1 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-primary transition-all duration-300"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-                <Slider
-                  value={[currentTime]}
-                  max={duration || 100}
-                  step={1}
-                  onValueChange={(val) => seek(val[0])}
-                  className={cn(
-                    "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity",
-                    "[&_[role=slider]]:h-3 [&_[role=slider]]:w-3"
-                  )}
-                />
-              </div>
-              <span className="text-xs text-muted-foreground w-10">
-                {formatTime(duration)}
-              </span>
-            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={playNext}
+              className="h-7 w-7 hover:bg-primary/10"
+            >
+              <SkipForward className="h-3.5 w-3.5" />
+            </Button>
           </div>
 
           {/* Hide Button */}
@@ -169,10 +140,38 @@ export const MusicPlayerBar = () => {
             variant="ghost"
             size="icon"
             onClick={() => setIsVisible(false)}
-            className="ml-auto h-8 w-8 hover:bg-primary/10"
+            className="h-7 w-7 hover:bg-primary/10"
           >
-            <ChevronUp className="h-4 w-4" />
+            <ChevronUp className="h-3 w-3" />
           </Button>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="flex items-center gap-2 mt-2">
+          <span className="text-[10px] text-muted-foreground w-8 text-right">
+            {formatTime(currentTime)}
+          </span>
+          <div className="flex-1 relative group">
+            <div className="h-1 bg-muted rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-primary transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <Slider
+              value={[currentTime]}
+              max={duration || 100}
+              step={1}
+              onValueChange={(val) => seek(val[0])}
+              className={cn(
+                "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity",
+                "[&_[role=slider]]:h-2.5 [&_[role=slider]]:w-2.5"
+              )}
+            />
+          </div>
+          <span className="text-[10px] text-muted-foreground w-8">
+            {formatTime(duration)}
+          </span>
         </div>
       </div>
     </div>
