@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { storageService } from '@/services/storageService';
 import { useApp } from '@/contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -127,8 +128,10 @@ export const Settings = () => {
     reader.onload = (event) => {
       try {
         const data = JSON.parse(event.target?.result as string);
-        localStorage.setItem('devCommandCenter', JSON.stringify(data));
-        window.location.reload();
+        storageService.importAll(data).then(() => {
+          toast.success('Dados importados! Recarregando...');
+          setTimeout(() => window.location.reload(), 1000);
+        });
       } catch (error) {
         toast.error('Erro ao importar dados');
       }
@@ -427,7 +430,7 @@ export const Settings = () => {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const fileContent = e.target?.result as string;
         let importedData;
@@ -452,30 +455,27 @@ export const Settings = () => {
         }
 
         // Verificar versão e estrutura
+        let stateToImport;
+        const extras: { theme?: string; currentProject?: string } = {};
+
         if (!importedData.version || !importedData.appState) {
           // Formato antigo (v1.0)
-          if (importedData.data) {
-            localStorage.setItem('devCommandCenter', JSON.stringify(importedData.data));
-          } else {
-            localStorage.setItem('devCommandCenter', JSON.stringify(importedData));
-          }
+          stateToImport = importedData.data || importedData;
         } else {
-          // Formato novo (v2.0) - restaurar todos os dados
-          localStorage.setItem('devCommandCenter', JSON.stringify(importedData.appState));
-          
+          // Formato novo (v2.0)
+          stateToImport = importedData.appState;
+          if (importedData.theme) extras.theme = importedData.theme;
+          if (importedData.currentProject) extras.currentProject = importedData.currentProject;
+
           if (importedData.musicPlaylists) {
             localStorage.setItem('musicPlaylists', JSON.stringify(importedData.musicPlaylists));
-          }
-          if (importedData.theme) {
-            localStorage.setItem('theme', importedData.theme);
-          }
-          if (importedData.currentProject) {
-            localStorage.setItem('currentProject', importedData.currentProject);
           }
           if (importedData.miniPlayerVisible !== undefined) {
             localStorage.setItem('mini-player-visible', importedData.miniPlayerVisible.toString());
           }
         }
+
+        await storageService.importAll(stateToImport, extras);
 
         toast.success('Dados importados! Recarregando...');
         setTimeout(() => window.location.reload(), 1500);
