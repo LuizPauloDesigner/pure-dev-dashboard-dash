@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo, useRef } from 'react';
+import { storageService } from '@/services/storageService';
 
 export interface Project {
   id: string;
@@ -110,7 +111,7 @@ export interface DiaryEntry {
   id: string;
   date: string;
   content: string;
-  moodScore?: number | null; // 1-5 ou null
+  moodScore?: number | null;
   projetoId?: string;
   origem?: string;
   dataHoraRegistro?: string;
@@ -190,9 +191,9 @@ export interface GamificationStats {
     timestamp: string;
   }>;
   badges: Badge[];
-  focusDuration: number; // minutos
-  shortBreakDuration: number; // minutos
-  longBreakDuration: number; // minutos
+  focusDuration: number;
+  shortBreakDuration: number;
+  longBreakDuration: number;
 }
 
 export interface BillingInfo {
@@ -475,85 +476,62 @@ const initialState: AppState = {
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [state, setState] = useState<AppState>(initialState);
-  const [currentProject, setCurrentProject] = useState('default');
+  const [currentProject, setCurrentProjectState] = useState('default');
   const [currentTab, setCurrentTab] = useState('dashboard');
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load state from localStorage
+  // Ref to track previous state for incremental diff
+  const prevStateRef = useRef<AppState | null>(null);
+
+  // ── Async Load from IndexedDB + Settings Store ──────────────────────────
   useEffect(() => {
-    const saved = localStorage.getItem('devCommandCenter');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // Merge with initialState to ensure all fields exist (handles migration)
-        setState({
-          ...initialState,
-          ...parsed,
-          // Ensure arrays exist even if missing from saved data
-          bookmarks: parsed.bookmarks || [],
-          financialAccounts: parsed.financialAccounts || [],
-          financialCategories: parsed.financialCategories || [],
-          financialBudgets: parsed.financialBudgets || [],
-          financialTransactions: parsed.financialTransactions || [],
-          contacts: parsed.contacts || [],
-          contactTags: parsed.contactTags || [],
-          checklists: parsed.checklists || [],
-          musicPlayerVolume: parsed.musicPlayerVolume ?? 0.7,
-          musicPlayerShuffle: parsed.musicPlayerShuffle ?? false,
-          musicPlayerRepeat: parsed.musicPlayerRepeat ?? false,
-          wellnessStats: parsed.wellnessStats || { breaks: [] },
-          enabledModules: parsed.enabledModules || initialState.enabledModules,
-        });
-      } catch (e) {
-        console.error('Error loading state:', e);
-      }
-    }
-
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark';
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.classList.toggle('dark', savedTheme === 'dark');
-    }
-
-    const savedProject = localStorage.getItem('currentProject');
-    if (savedProject) setCurrentProject(savedProject);
+    storageService.loadAll()
+      .then((loaded) => {
+        setState(loaded.state);
+        setCurrentProjectState(loaded.currentProject);
+        const loadedTheme = (loaded.theme === 'light' ? 'light' : 'dark') as 'light' | 'dark';
+        setTheme(loadedTheme);
+        document.documentElement.classList.toggle('dark', loadedTheme === 'dark');
+        prevStateRef.current = loaded.state;
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        console.error('[AppContext] Failed to load state:', err);
+        setIsLoading(false);
+      });
   }, []);
 
-  // Save state to localStorage with debounce for better performance
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
-  const isInitialMount = useRef(true);
-  
+  // ── Smart Incremental Save (diff by reference) ─────────────────────────
   useEffect(() => {
-    // Skip saving on initial mount (we just loaded from localStorage)
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
+    if (isLoading) return;
+    const prev = prevStateRef.current;
+    if (!prev) {
+      prevStateRef.current = state;
       return;
     }
-    
-    // Debounce localStorage writes to avoid performance issues
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    
-    saveTimeoutRef.current = setTimeout(() => {
-      localStorage.setItem('devCommandCenter', JSON.stringify(state));
-    }, 500); // 500ms debounce
-    
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, [state]);
 
-  // Check for recurring tasks
+    // Delegate diffing + debounced writes to storageService
+    storageService.diffAndPersist(prev, state);
+    prevStateRef.current = state;
+  }, [state, isLoading]);
+
+  // ── Persist currentProject changes ──────────────────────────────────────
+  const setCurrentProject = useCallback((id: string) => {
+    setCurrentProjectState(id);
+    storageService.queueSettingsWrite({ currentProject: id });
+  }, []);
+
+  // ── Check for recurring tasks ───────────────────────────────────────────
   useEffect(() => {
-    const checkRecurringTasks = () => {
+    if (isLoading) return;
+
+    const checkRecurringTasks = async () => {
       const today = new Date().toDateString();
-      const lastCheck = localStorage.getItem('lastRecurringCheck');
-      
-      if (lastCheck === today) return;
+      const settings = await storageService.getSettings(['lastRecurringCheck']);
+
+      if (settings.lastRecurringCheck === today) return;
 
       const updatedTasks = [...state.kanban];
       let hasChanges = false;
@@ -562,7 +540,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         if (task.column === 'done' && task.recurrence && task.recurrence !== 'none' && task.completedAt) {
           const completedDate = new Date(task.completedAt);
           const now = new Date();
-          
+
           let shouldRecreate = false;
           if (task.recurrence === 'daily') {
             shouldRecreate = now.getDate() !== completedDate.getDate();
@@ -587,20 +565,22 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       if (hasChanges) {
         setState(prev => ({ ...prev, kanban: updatedTasks }));
       }
-      
-      localStorage.setItem('lastRecurringCheck', today);
+
+      storageService.queueSettingsWrite({ lastRecurringCheck: today });
     };
 
     checkRecurringTasks();
-  }, []);
+  }, [isLoading]);
 
-  // Check for recurring financial transactions
+  // ── Check for recurring financial transactions ──────────────────────────
   useEffect(() => {
-    const checkRecurringTransactions = () => {
+    if (isLoading) return;
+
+    const checkRecurringTransactions = async () => {
       const today = new Date().toDateString();
-      const lastFinancialCheck = localStorage.getItem('lastFinancialRecurringCheck');
-      
-      if (lastFinancialCheck === today) return;
+      const settings = await storageService.getSettings(['lastFinancialRecurringCheck']);
+
+      if (settings.lastFinancialRecurringCheck === today) return;
 
       const updatedTransactions = [...(state.financialTransactions || [])];
       let hasChanges = false;
@@ -609,15 +589,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         if (transaction.recurrence !== 'never' && transaction.lastRecurrence) {
           const lastDate = new Date(transaction.lastRecurrence);
           const now = new Date();
-          
+
           let shouldRecreate = false;
           if (transaction.recurrence === 'monthly') {
-            // Check if a month has passed
-            const monthsDiff = (now.getFullYear() - lastDate.getFullYear()) * 12 + 
+            const monthsDiff = (now.getFullYear() - lastDate.getFullYear()) * 12 +
                              (now.getMonth() - lastDate.getMonth());
             shouldRecreate = monthsDiff >= 1;
           } else if (transaction.recurrence === 'yearly') {
-            // Check if a year has passed
             const yearsDiff = now.getFullYear() - lastDate.getFullYear();
             shouldRecreate = yearsDiff >= 1;
           }
@@ -638,21 +616,23 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       if (hasChanges) {
         setState(prev => ({ ...prev, financialTransactions: updatedTransactions }));
       }
-      
-      localStorage.setItem('lastFinancialRecurringCheck', today);
+
+      storageService.queueSettingsWrite({ lastFinancialRecurringCheck: today });
     };
 
     checkRecurringTransactions();
-  }, []);
+  }, [isLoading]);
 
+  // ── Theme toggle ────────────────────────────────────────────────────────
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
     document.documentElement.classList.toggle('dark');
-    localStorage.setItem('theme', newTheme);
+    storageService.queueSettingsWrite({ theme: newTheme });
   };
 
-  // CRUD operations
+  // ── CRUD Operations (all unchanged, same API) ──────────────────────────
+
   const addProject = (project: Omit<Project, 'id'>) => {
     const newProject = { ...project, id: Date.now().toString() };
     setState(prev => ({ ...prev, projects: [...prev.projects, newProject] }));
@@ -685,7 +665,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const updateNote = (id: string, updates: Partial<Note>) => {
     setState(prev => ({
       ...prev,
-      notes: prev.notes.map(n => 
+      notes: prev.notes.map(n =>
         n.id === id ? { ...n, ...updates, updatedAt: new Date().toISOString() } : n
       ),
     }));
@@ -816,29 +796,29 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setState(prev => {
       const existing = prev.diary.find(e => e.date === date);
       const dataHoraRegistro = new Date().toISOString();
-      
+
       if (existing) {
         return {
           ...prev,
-          diary: prev.diary.map(e => 
-            e.date === date 
-              ? { 
-                  ...e, 
-                  content, 
-                  moodScore, 
-                  projetoId, 
+          diary: prev.diary.map(e =>
+            e.date === date
+              ? {
+                  ...e,
+                  content,
+                  moodScore,
+                  projetoId,
                   origem: 'Diario',
-                  dataHoraRegistro 
-                } 
+                  dataHoraRegistro
+                }
               : e
           ),
         };
       }
       return {
         ...prev,
-        diary: [...prev.diary, { 
-          id: Date.now().toString(), 
-          date, 
+        diary: [...prev.diary, {
+          id: Date.now().toString(),
+          date,
           content,
           moodScore,
           projetoId,
@@ -883,10 +863,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         descricao,
         timestamp: new Date().toISOString(),
       };
-      
+
       const novosPontos = prev.gamificationStats.pontos + pontos;
       const novoNivel = Math.floor(novosPontos / 150) + 1;
-      
+
       return {
         ...prev,
         gamificationStats: {
@@ -905,7 +885,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       if (!badge || prev.gamificationStats.badges.some(b => b.id === badgeId)) {
         return prev;
       }
-      
+
       return {
         ...prev,
         gamificationStats: {
@@ -1073,8 +1053,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const addChecklistItem = (checklistId: string, item: Omit<ChecklistItem, 'id'>) => {
     setState(prev => ({
       ...prev,
-      checklists: prev.checklists.map(checklist => 
-        checklist.id === checklistId 
+      checklists: prev.checklists.map(checklist =>
+        checklist.id === checklistId
           ? {
               ...checklist,
               itens: [...checklist.itens, { ...item, id: Date.now().toString() }]
@@ -1114,7 +1094,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
-  // Budget management
   const updateBillingInfo = (info: Partial<BillingInfo>) => {
     setState(prev => ({
       ...prev,
@@ -1262,7 +1241,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  // Memoize the context value to prevent unnecessary re-renders
+  // ── Memoized Context Value ──────────────────────────────────────────────
   const contextValue = useMemo(() => ({
     state,
     currentProject,
@@ -1347,6 +1326,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     deleteTechSheet,
     toggleModule,
   }), [state, currentProject, currentTab, theme, searchQuery]);
+
+  // ── Loading State ───────────────────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-background">
+        <div className="animate-pulse text-muted-foreground text-sm">Carregando dados...</div>
+      </div>
+    );
+  }
 
   return (
     <AppContext.Provider value={contextValue}>
