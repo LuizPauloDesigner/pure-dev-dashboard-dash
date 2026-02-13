@@ -40,6 +40,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PomodoroTimer } from './PomodoroTimer';
 
 interface MenuItem {
   id: string;
@@ -177,6 +178,9 @@ export function ExtensionNavbar() {
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Pomodoro Timer */}
+        <PomodoroTimer />
 
         {/* Spacer */}
         <div className="flex-1" />
