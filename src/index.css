@@ -98,11 +98,9 @@ All colors MUST be HSL.
 
 /* Chrome Extension Side Panel Styles */
 @layer components {
-  /* Extension container - fixed dimensions for side panel */
+  /* Extension container - full screen for new tab */
   .extension-container {
     width: 100%;
-    max-width: 420px;
-    min-width: 320px;
     height: 100vh;
     overflow: hidden;
   }
@@ -151,25 +149,25 @@ All colors MUST be HSL.
     @apply text-sm font-medium;
   }
 
-  /* Kanban columns - stack vertically in extension */
+  /* Kanban columns - horizontal in full screen */
   .extension-content .kanban-board {
-    @apply flex-col gap-3;
+    @apply flex-row gap-3;
   }
 
   .extension-content .kanban-column {
-    @apply w-full min-h-[150px];
+    @apply min-w-[250px] min-h-[150px];
   }
 
-  /* Grid adjustments for extension - single column */
+  /* Grid adjustments - responsive columns */
   .extension-content .grid-compact {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 0.75rem;
   }
 
-  /* Charts - reduce height */
+  /* Charts - flexible height */
   .extension-content canvas {
-    max-height: 180px !important;
+    max-height: 400px !important;
   }
 }
 
