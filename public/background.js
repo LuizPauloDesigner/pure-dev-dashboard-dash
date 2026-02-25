@@ -1,8 +1,9 @@
 // Background service worker for Chrome Extension
-// Opens side panel when extension icon is clicked
+// Opens a new tab when extension icon is clicked
 
-chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
-  .catch((error) => console.error('Error setting panel behavior:', error));
+chrome.action.onClicked.addListener(() => {
+  chrome.tabs.create({ url: chrome.runtime.getURL('index.html') });
+});
 
 // Listen for installation
 chrome.runtime.onInstalled.addListener(() => {
