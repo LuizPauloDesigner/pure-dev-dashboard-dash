@@ -68,7 +68,7 @@ const MainContent = memo(() => {
 
   return (
     <ScrollArea className="flex-1">
-      <main className="p-3 extension-content">
+      <main className="p-4 md:p-6 extension-content max-w-7xl mx-auto">
         <Component />
       </main>
     </ScrollArea>
