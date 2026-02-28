@@ -29,6 +29,7 @@ import { Pricing } from '@/components/Pricing';
 import { Stock } from '@/components/Stock';
 import { TechSheet } from '@/components/TechSheet';
 import Tutorial from '@/components/Tutorial';
+import { VideoPlayer } from '@/components/VideoPlayer';
 
 // Component map for cleaner rendering
 const COMPONENT_MAP: Record<string, React.ComponentType> = {
@@ -51,6 +52,7 @@ const COMPONENT_MAP: Record<string, React.ComponentType> = {
   diary: Diary,
   wellness: Wellness,
   musica: MusicPlayer,
+  videos: VideoPlayer,
   draft: Draft,
   settings: Settings,
 };

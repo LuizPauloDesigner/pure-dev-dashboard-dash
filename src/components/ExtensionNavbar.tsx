@@ -38,6 +38,7 @@ import {
   Search,
   X,
   ChevronRight,
+  MonitorPlay,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PomodoroTimer } from './PomodoroTimer';
@@ -54,6 +55,7 @@ const menuItems: MenuItem[] = [
   { id: 'tutorial', label: 'Tutorial', icon: HelpCircle, category: 'system' },
   { id: 'wellness', label: 'Bem-Estar', icon: Heart, category: 'personal' },
   { id: 'musica', label: 'Músicas', icon: Music, category: 'personal' },
+  { id: 'videos', label: 'Vídeos', icon: MonitorPlay, category: 'personal' },
   { id: 'favorites', label: 'Favoritos', icon: Star, category: 'main' },
   { id: 'notes', label: 'Notas', icon: FileText, category: 'productivity' },
   { id: 'prompts', label: 'Prompts IA', icon: Sparkles, category: 'productivity' },
