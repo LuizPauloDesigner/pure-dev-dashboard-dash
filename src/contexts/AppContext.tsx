@@ -471,7 +471,7 @@ const initialState: AppState = {
   },
   stockMaterials: [],
   techSheets: [],
-  enabledModules: ['dashboard', 'tutorial', 'wellness', 'musica', 'favorites', 'notes', 'prompts', 'snippets', 'cheatsheet', 'kanban', 'checklists', 'passwords', 'contacts', 'orcamentos', 'precificador', 'estoque', 'fichatecnica', 'finance', 'diary', 'draft', 'settings'],
+  enabledModules: ['dashboard', 'tutorial', 'wellness', 'musica', 'videos', 'favorites', 'notes', 'prompts', 'snippets', 'cheatsheet', 'kanban', 'checklists', 'passwords', 'contacts', 'orcamentos', 'precificador', 'estoque', 'fichatecnica', 'finance', 'diary', 'draft', 'settings'],
 };
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {

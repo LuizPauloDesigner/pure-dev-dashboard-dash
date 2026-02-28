@@ -747,6 +747,7 @@ export const Settings = () => {
               { id: 'tutorial', label: 'Tutorial', protected: true },
               { id: 'wellness', label: 'Bem-Estar', protected: false },
               { id: 'musica', label: 'Biblioteca de Músicas', protected: false },
+              { id: 'videos', label: 'Biblioteca de Vídeos', protected: false },
               { id: 'favorites', label: 'Favoritos', protected: false },
               { id: 'notes', label: 'Notas', protected: false },
               { id: 'prompts', label: 'Prompts IA', protected: false },
