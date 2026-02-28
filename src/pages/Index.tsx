@@ -5,6 +5,7 @@ import { CommandPalette } from '@/components/CommandPalette';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import React, { memo, useEffect, useState } from 'react';
+import { DailyVerse } from '@/components/DailyVerse';
 
 // Direct imports for instant loading
 import { Dashboard } from '@/components/Dashboard';
@@ -99,6 +100,9 @@ const Index = () => {
     <div className="h-screen w-full flex flex-col bg-background overflow-hidden extension-container">
       {/* Mini Player */}
       {isPlayerVisible && <MusicPlayerBar />}
+      
+      {/* Daily Verse */}
+      <DailyVerse />
       
       {/* Extension Navbar */}
       <ExtensionNavbar />
